@@ -1,0 +1,57 @@
+/* Premium public experience, layered on existing v0.3 styles; no JS required.
+   All motion respects users with reduced-motion preferences. */
+:root{--navy:#193a31;--teal:#497f6b;--background:#fafaf7;--ink:#1e392f;--muted:#81938b;--line:#e6ece5;--panel:#fff}
+.public-body{background:#fafaf7}
+.public-body .topbar{height:88px;background:#ffffffdb;backdrop-filter:blur(18px);border-bottom:1px solid #e6e9e2;position:sticky;top:0;z-index:10}
+.public-body .wordmark{letter-spacing:-.7px}
+.public-body .logo-icon{border-radius:15px;background:#21473c;color:#fff;box-shadow:0 5px 12px #1b422822}
+.public-body .hero{background:radial-gradient(circle at 10% 0%,#e6eee0 0%,#fafaf6 50%,#fbfaf5 100%);overflow:hidden}
+.public-body .hero h1{line-height:1.48;letter-spacing:-1px;animation:premium-rise .8s ease both}
+.public-body .hero h1 span{color:#698c70}
+.public-body .hero p{line-height:2.2;animation:premium-rise .8s .1s ease both}
+.public-body .hero-actions{animation:premium-rise .8s .18s ease both}
+.public-body .eyebrow,.public-body .section-tag{color:#5c8d6f;letter-spacing:2.1px}
+.public-body .hero-stats>div{border-left:1px solid #d4dfd7;padding-left:15px}
+.public-body .portal-art{isolation:isolate}
+.public-body .portal-art:before{content:'';position:absolute;inset:18% 22%;background:#d3e3cb4c;filter:blur(65px);border-radius:50%;z-index:-1;animation:premium-breathe 8s ease-in-out infinite}
+.public-body .portal-center{background:linear-gradient(135deg,#1b4338,#376854);box-shadow:0 24px 55px #1f4c3345;color:#f5eddd;animation:premium-hover 7s ease-in-out infinite}
+.public-body .floating-site{box-shadow:0 26px 60px #25463220!important;border:1px solid #eff1ea!important;transition:transform .35s,box-shadow .35s}
+.public-body .floating-site:hover{transform:translateY(-12px) rotate(1deg);box-shadow:0 30px 70px #17362728!important}
+.public-body .orbit-a{animation:premium-rotate 32s linear infinite}.public-body .orbit-b{animation:premium-rotate 43s linear infinite reverse}
+.public-body .site-card,.public-body .plan-card,.public-body .public-product{border:1px solid #e5eae3;box-shadow:0 12px 35px #243d2810;transition:transform .35s,box-shadow .35s,border-color .35s}
+.public-body .site-card:hover,.public-body .plan-card:hover,.public-body .public-product:hover{transform:translateY(-7px);border-color:#b9d6bd;box-shadow:0 22px 47px #243d281b}
+.public-body .site-banner{position:relative;overflow:hidden}
+.public-body .site-banner:after{content:'';position:absolute;width:160px;height:160px;left:-40px;top:-55px;border:1px solid #fff5;border-radius:50%;box-shadow:0 0 0 32px #ffffff13,0 0 0 76px #ffffff12}
+.public-body .button.primary{background:#235342;box-shadow:0 9px 24px #21573a29;transition:transform .3s,box-shadow .3s,background .3s}
+.public-body .button.primary:hover{background:#2c7159;transform:translateY(-2px);box-shadow:0 13px 30px #21573a35}
+.public-body .section-head h2{letter-spacing:-.65px}
+.public-body .site-public-head{background:radial-gradient(circle at 20% 0%,#d5e7db55,transparent 55%),linear-gradient(110deg,var(--site-accent),#739885);position:relative;overflow:hidden}
+.public-body .site-public-head:after{content:'';position:absolute;inset:-140px -80px auto auto;width:450px;height:450px;border:1px solid #ffffff40;border-radius:50%;box-shadow:0 0 0 55px #ffffff0a,0 0 0 115px #ffffff0c;pointer-events:none}
+.public-body .auth-backdrop{background:radial-gradient(circle at 15% 38%,#dceadd,#f9fbf7 48%)}
+.public-body .auth-card{box-shadow:0 24px 80px #173f271a}
+.public-body .footer{background:#f5f7f2}
+@keyframes premium-rise{from{opacity:0;transform:translateY(17px)}to{opacity:1;transform:translateY(0)}}
+@keyframes premium-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes premium-breathe{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:1;transform:scale(1.16)}}
+@keyframes premium-rotate{to{transform:rotate(360deg)}}
+@media(max-width:750px){.public-body .hero h1{font-size:35px}.public-body .topbar{height:auto}.public-body .floating-site:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){.public-body *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* Tenant admin panels share the same restrained premium visual language, while
+   retaining server-side role/plan enforcement from the original application. */
+.admin-body{--navy:#143c31;--teal:#337f5f;--background:#f7f9f6;--ink:#25483b;--muted:#839b8a;--line:#e7ece5;--panel:#fff;background:#f7f9f6}
+.admin-body .sidebar{background:linear-gradient(165deg,#102f28,#1d4c3b 80%);color:#e2efe4}
+.admin-body .sidebar .logo-icon{background:#cdb787;color:#183c2c}
+.admin-body .nav-item{transition:background .2s,transform .2s}
+.admin-body .nav-item:hover{background:#355a4a;transform:translateX(-2px)}
+.admin-body .admin-top h1{letter-spacing:-.7px}
+.admin-body .panel,.admin-body .metric{border-color:#e2eae2;box-shadow:0 12px 38px #284c3210;transition:box-shadow .22s,transform .22s}
+.admin-body .metric:hover,.admin-body .panel:hover{box-shadow:0 15px 42px #274c321a}
+.admin-body .metric strong{color:#28523d}
+.admin-body .button.primary{background:#235542;box-shadow:0 8px 21px #18513821;transition:background .2s,transform .2s}
+.admin-body .button.primary:hover{background:#39785b;transform:translateY(-1px)}
+.admin-body .storefront-preview{background:radial-gradient(circle at 20% 10%,#ffffff44,transparent 60%),linear-gradient(120deg,var(--site-accent),#8ab39b);min-height:195px}
+.admin-body .site-public-head{box-shadow:0 16px 45px #1a4a3824}
+.admin-body .status.good{color:#287251;background:#e0f3e5}
+.admin-body .feature-control{transition:border-color .2s}.admin-body .feature-control:hover{border-color:#a7ceaf}
+.admin-body .nav-list{scrollbar-width:thin}
+@media(prefers-reduced-motion:reduce){.admin-body *{animation:none!important;transition:none!important}}
