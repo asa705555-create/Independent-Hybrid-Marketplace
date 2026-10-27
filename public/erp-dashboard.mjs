@@ -27,6 +27,28 @@ const storageNamespace=`${scope}:${demo?'demo':scope==='owner'?'owner':siteSlug}
 const layoutKey=`dashboard_widget_layout_v1:${storageNamespace}`;
 const dateKey=`dashboard_date_range:${storageNamespace}`;
 const localeKey=`dashboard_locale:${storageNamespace}`;
+/** View-only public demo role switch. Both variants use fictional fixtures.
+ * This NEVER changes backend authorization; it changes labels only. */
+function setupDemoPreviewRoles(){
+ if(!demo)return;
+ const view=new URLSearchParams(location.search).get('view')==='owner'?'owner':'brand';
+ const name=view==='owner'?'الإدارة الرئيسية':'لوحة البراند التجريبي';
+ const workspace=document.querySelector('.oc-workspace b');
+ if(workspace)workspace.textContent=name;
+ const scopeChip=document.querySelector('.erp-scope-chip');
+ if(scopeChip){const label=scopeChip.querySelector('svg');scopeChip.textContent=view==='owner'?'جميع المواقع':'موقع واحد';if(label)scopeChip.prepend(label);}
+ const actions=document.querySelector('.erp-heading-actions');
+ if(!actions)return;
+ const container=document.createElement('div');container.className='erp-preview-roles';
+ const ownerLink=document.createElement('a');ownerLink.href='/?view=owner';ownerLink.textContent='معاينة الإدارة';
+ const brandLink=document.createElement('a');brandLink.href='/?view=brand';brandLink.textContent='معاينة البراند';
+ for(const [a,v] of [[ownerLink,'owner'],[brandLink,'brand']]){
+  a.className='erp-ghost-btn'+(v===view?' erp-view-active':'');
+  if(v===view)a.setAttribute('aria-current','page');
+  container.append(a);
+ }
+ actions.prepend(container);
+}
 function getStorage(key){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
 function saveStorage(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch{ /* storage may be blocked */ }}
 function originalLayout(){return ids.map(id=>({id,visible:true,span:Number(document.querySelector(`[data-widget="${id}"]`)?.dataset.span||6)}));}
@@ -139,4 +161,5 @@ grid.addEventListener('dragend',()=>{dragged=null;cards.forEach(n=>n.classList.r
 $('erp-menu').addEventListener('click',()=>{$('erp-side').classList.add('open');$('erp-overlay').hidden=false});
 $('erp-overlay').addEventListener('click',()=>{$('erp-side').classList.remove('open');$('erp-overlay').hidden=true});
 $('erp-notifications').addEventListener('click',()=>{const b=$('erp-data-banner');b.textContent=state.language==='ar'?'لا توجد تنبيهات جديدة.':'No new notifications.'});
+setupDemoPreviewRoles();
 (async()=>{try{applyLayout();await loadRealContext();refreshBranchSelect();renderAll();}catch(err){cards.forEach(c=>c.querySelector('[data-widget-content]').innerHTML=empty());$('erp-data-banner').textContent='تعذر تحميل البيانات أو ليس لديك صلاحية للوحة. يرجى تسجيل الدخول.';console.warn('ERP data unavailable:',err.message);}})();

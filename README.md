@@ -105,3 +105,10 @@ Tests cover 17-widget registry, role and package authorization, cross-tenant IDO
 ### Deployment and known limits
 
 For a free isolated preview, set `DEMO_EPHEMERAL=1`, `DEMO_SEED=1`, a **unique** 20+-character owner password (not in Git), `PUBLIC_ORIGIN` to the deployment URL and `NODE_ENV=production`. Free-preview storage is disposable. Do **not** use fake ERP sales as a source of financial decisions. No real billing/receipts/payment provider is enabled.
+
+### Live design-preview links (no login and no real data)
+
+- Owner visual preview: `https://jame3-erp-design-preview-v07.onrender.com/?view=owner`
+- Brand visual preview: `https://jame3-erp-design-preview-v07.onrender.com/?view=brand`
+
+These links only toggle the labels and navigation context of the public **fictional demo**. They do not grant owner or tenant access. The protected application routes remain `/owner/erp` and `/dashboard/:slug/erp` and require a private server with real authentication and per-brand authorization.

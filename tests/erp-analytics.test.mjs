@@ -103,3 +103,10 @@ test('ERP module assets serve only known files',async()=>{
  }
  assert.equal((await req('/assets/../../src/store.mjs')).status,404);
 });
+
+test('owner and brand previews preserve the same premium layout and 17 widget set',()=>{
+ const owner=erpDashboardPage({scope:'demo',previewRole:'owner'});
+ const brand=erpDashboardPage({scope:'demo',previewRole:'brand',site:{name:'Atelier',slug:'atelier-demo'}});
+ for(const html of [owner,brand]){assert.equal((html.match(/class="erp-widget erp-widget-/g)||[]).length,17);assert.match(html,/owner-console\.css/);assert.match(html,/data-scope="demo"/)}
+ assert.match(owner,/الإدارة الرئيسية/);assert.match(brand,/Atelier/);
+});
