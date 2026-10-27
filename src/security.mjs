@@ -1,6 +1,38 @@
 import { randomBytes, createHash, createHmac, scryptSync, timingSafeEqual } from 'node:crypto';
 
 /** Authentication and output-safety primitives. No secrets ever belong in client JS. */
+/** Decode RFC4648 Base32 TOTP secrets; never expose their bytes to a client. */
+export function decodeTotpSecret(value) {
+  if (typeof value !== 'string' || !/^[A-Z2-7]+=*$/i.test(value) || value.length > 240) throw new Error('Invalid OWNER_TOTP_SECRET');
+  const clean = value.toUpperCase().replace(/=+$/, '');
+  if (clean.length < 32 || !/^[A-Z2-7]+$/.test(clean)) throw new Error('TOTP secret must contain at least 20 bytes');
+  let bits = 0, carry = 0; const output = [];
+  for (const char of clean) {
+    const n = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.indexOf(char);
+    carry = (carry << 5) | n; bits += 5;
+    if (bits >= 8) { bits -= 8; output.push((carry >> bits) & 255); carry &= (1 << bits) - 1; }
+  }
+  if (output.length < 20 || output.length > 128 || carry !== 0) throw new Error('Invalid TOTP secret encoding');
+  return Buffer.from(output);
+}
+
+/** RFC6238 SHA-1/TOTP, returning the matched step so callers can block replays. */
+export function verifyTotp(secretBytes, candidate, now = Date.now(), window = 1) {
+  if (!Buffer.isBuffer(secretBytes) || secretBytes.length < 20 || typeof candidate !== 'string' || !/^\d{6}$/.test(candidate) || !Number.isSafeInteger(now) || now < 0) return null;
+  const at = Math.floor(now / 30000);
+  for (let offset = -window; offset <= window; offset++) {
+    const step = at + offset;
+    if (step < 0) continue;
+    const bytes = Buffer.alloc(8);
+    bytes.writeBigUInt64BE(BigInt(step));
+    const digest = createHmac('sha1', secretBytes).update(bytes).digest();
+    const pos = digest[digest.length - 1] & 15;
+    const otp = (((digest[pos] & 127) << 24) | (digest[pos+1] << 16) | (digest[pos+2] << 8) | digest[pos+3]) % 1000000;
+    if (constantEqual(String(otp).padStart(6,'0'), candidate)) return step;
+  }
+  return null;
+}
+
 export const token = () => randomBytes(32).toString('base64url');
 export const sha256 = v => createHash('sha256').update(String(v)).digest('hex');
 export const constantEqual = (a, b) => {

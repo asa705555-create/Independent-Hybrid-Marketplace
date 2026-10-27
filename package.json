@@ -1,13 +1,14 @@
 {
   "name": "jame3-independent-platform",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.13 <23" },
   "scripts": {
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
+    "backup:demo": "node scripts/backup-sqlite.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/security.mjs && node --check src/templates.mjs && node --check src/owner-console.mjs && node --check src/reports.mjs && node --check public/owner-console.mjs"
+    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/security.mjs && node --check src/templates.mjs && node --check src/owner-console.mjs && node --check src/reports.mjs && node --check scripts/backup-sqlite.mjs && node --check public/owner-console.mjs"
   }
 }

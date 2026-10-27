@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStore } from './store.mjs';
-import { plans, escapeHtml, validEmail, validColor, validSlug, validateSite, can, entitlement, parseCookie, parseForm, verifyCsrf } from './security.mjs';
+import { plans, escapeHtml, validEmail, validColor, validSlug, validateSite, can, entitlement, parseCookie, parseForm, verifyCsrf, decodeTotpSecret, verifyTotp } from './security.mjs';
 import { layout, hub, signin, workspaceIndex, siteDashboard, sitePublic, invitePage, pageError } from './templates.mjs';
 import { ownerCommandCenter } from './owner-console.mjs';
 import { sitesCsv } from './reports.mjs';
@@ -41,10 +41,11 @@ function cleanPath(url){try{return new URL(url,'http://localhost').pathname;}cat
 function numberField(x,max) {if(typeof x!=='string'||!/^\d{1,12}$/.test(x))return null;const n=Number(x);return Number.isSafeInteger(n)&&n<=max?n:null;}
 function normalizeOrigin(raw){try{const url=new URL(raw);return url.origin;}catch{return null;}}
 
-export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
+export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, ownerTotpSecret=null, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
   if(!store)throw Error('Explicit isolated store required');
   const allowedOrigin=normalizeOrigin(publicOrigin);
   if(!allowedOrigin)throw Error('PUBLIC_ORIGIN must be set correctly');
+  const totpKey = ownerTotpSecret ? decodeTotpSecret(ownerTotpSecret) : null;
   const secureSuffix=secureCookies?'; Secure':'';
   const cookieValue=raw=>`${sessionCookie}=${raw}; HttpOnly; Path=/; SameSite=Lax; Max-Age=43200${secureSuffix}`;
   const deleteCookie=`${sessionCookie}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureSuffix}`;
@@ -81,10 +82,10 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
     if(method==='GET' && (pathname==='/marketplace'||pathname==='/marketplace/'))return redirect(res,'/marketplace/index.html');
     if(method==='GET' && pathname==='/health')return response(res,200,'OK',{'Content-Type':'text/plain; charset=utf-8'});
     if(method==='GET' && pathname==='/')return response(res,200,hub(store.listSites(),currentUser));
-    if(method==='GET' && pathname==='/login')return session?redirect(res,isOwner?'/owner':'/workspaces'):response(res,200,signin());
+    if(method==='GET' && pathname==='/login')return session?redirect(res,isOwner?'/owner':'/workspaces'):response(res,200,signin({mfaEnabled:Boolean(totpKey)}));
     if(method==='GET' && pathname==='/owner') {
       if(!ownerOnly())return;
-      return response(res,200,ownerCommandCenter(store.listSites(),store.listAudit(),session,{statistics:store.ownerSnapshot(now())}));
+      return response(res,200,ownerCommandCenter(store.listSites(),store.listAudit(),session,{statistics:store.ownerSnapshot(now()),security:{mfaEnabled:Boolean(totpKey)}}));
     }
     // Owner-only CSV export: available exclusively after server-side owner check.
     // The serializer neutralizes spreadsheet formulas to prevent CSV injection.
@@ -123,11 +124,19 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
       if(pathname==='/session/login') {
         const email=typeof form.email==='string'?form.email.trim().toLowerCase():'';
         const password=form.password||'';
-        const key=`${req.socket.remoteAddress||'unknown'}:${email.slice(0,254)}`;
-        if(!loginLimiter.check(key))return error(429,'محاولات كثيرة','حاول لاحقًا.');
-        const user=validEmail(email)?store.verifyLogin(email,password):null;
-        if(!user){loginLimiter.failure(key);return response(res,401,signin({error:'بيانات الدخول غير صحيحة.'}));}
-        loginLimiter.success(key);const raw=store.createSession(user.id,now());
+        // Throttle per-account AND per-address to resist distributed account guessing
+        // and a single source spraying many account names. Use a shared limiter in production.
+        const ip=req.socket.remoteAddress||'unknown';
+        const keys=[`ip:${ip}`,`email:${email.slice(0,254)}`,`pair:${ip}:${email.slice(0,254)}`];
+        if(keys.some(key=>!loginLimiter.check(key)))return error(429,'محاولات كثيرة','حاول لاحقًا.');
+        let user=validEmail(email)?store.verifyLogin(email,password):null;
+        if(user?.role==='owner' && totpKey) {
+          const step=verifyTotp(totpKey,form.otp,now());
+          if(step===null || !store.consumeOwnerOtp(user.id,step)) user=null;
+        }
+        if(!user){for(const key of keys)loginLimiter.failure(key);return response(res,401,signin({error:'بيانات الدخول غير صحيحة.',mfaEnabled:Boolean(totpKey)}));}
+        // A successful login clears account/pair strikes; IP strikes expire by time.
+        loginLimiter.success(keys[1]);loginLimiter.success(keys[2]);const raw=store.createSession(user.id,now());
         return redirect(res,user.role==='owner'?'/owner':'/workspaces',{'Set-Cookie':cookieValue(raw)});
       }
       if(pathname==='/invite/accept') {
@@ -142,6 +151,11 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
       if(!csrf(form))return error(403,'حماية الطلب','رمز الحماية غير صحيح أو منتهي.');
       if(pathname==='/session/logout'){
         store.revokeSession(cookie);return redirect(res,'/',{'Set-Cookie':deleteCookie});
+      }
+      if(pathname==='/owner/sessions/revoke-all'){
+        if(!ownerOnly())return;
+        store.revokeAllSessions(session.user_id);
+        return redirect(res,'/login',{'Set-Cookie':deleteCookie});
       }
       if(pathname==='/owner/sites'){
         if(!ownerOnly())return;
@@ -217,6 +231,8 @@ export function startFromEnvironment(env=process.env) {
   const publicOrigin=env.PUBLIC_ORIGIN||'http://localhost:3000';
   if(env.NODE_ENV==='production'&&!publicOrigin.startsWith('https://'))throw Error('Production must use HTTPS public origin.');
   const dbFile=env.DB_FILE||':memory:';
+  // Reject misconfigured MFA *before* accepting traffic. No fallback to password-only.
+  if(env.OWNER_TOTP_SECRET)decodeTotpSecret(env.OWNER_TOTP_SECRET);
   if(dbFile!==':memory:')fs.mkdirSync(path.dirname(path.resolve(dbFile)),{recursive:true});
   const store=createStore(dbFile,{seed:env.DEMO_SEED==='1'});
   const ownerId=store.bootstrapOwner(email,password);store.seedForPreview(ownerId);
@@ -227,7 +243,7 @@ export function startFromEnvironment(env=process.env) {
       else res.end();
     });
   });
-  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production'});
+  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production',ownerTotpSecret:env.OWNER_TOTP_SECRET||null});
   const port=Number(env.PORT||3000);
   server.listen(port,'0.0.0.0',()=>console.log(`Jame3 isolated preview listening on port ${port} (ephemeral mode)`));
   return {server,store};

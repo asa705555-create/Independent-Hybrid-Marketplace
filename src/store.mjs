@@ -13,6 +13,7 @@ export function createStore(path = ':memory:', opts = {}) {
   const dummyHash=scryptSync('unused-demo-account',dummySalt,64).toString('hex');
   db.exec(`PRAGMA foreign_keys=ON;
   CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,salt TEXT NOT NULL,password_hash TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('owner','member')),created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+  CREATE TABLE IF NOT EXISTS owner_mfa_replay(user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,last_step INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,csrf_secret TEXT NOT NULL,expires_at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS sites(id TEXT PRIMARY KEY,slug TEXT NOT NULL UNIQUE,name TEXT NOT NULL,tagline TEXT NOT NULL DEFAULT '',accent TEXT NOT NULL,plan TEXT NOT NULL CHECK(plan IN ('starter','growth','scale')),status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','suspended')),created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
   CREATE TABLE IF NOT EXISTS memberships(site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,role TEXT NOT NULL CHECK(role IN ('manager','catalog','viewer')),PRIMARY KEY(site_id,user_id));
@@ -55,12 +56,29 @@ export function createStore(path = ':memory:', opts = {}) {
       run('INSERT INTO sessions VALUES (?,?,?,?)',tokenHash,userId,csrfSecret,now+12*60*60*1000);
       return raw;
     },
+    /** One-time use enforcement across sessions, atomic even for concurrent requests. */
+    consumeOwnerOtp(userId, step) {
+      if (!Number.isSafeInteger(step) || step < 0) return false;
+      return tx(() => {
+        const previous = one('SELECT last_step FROM owner_mfa_replay WHERE user_id=?',userId);
+        if (previous && step <= previous.last_step) return false;
+        run('INSERT INTO owner_mfa_replay(user_id,last_step) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET last_step=excluded.last_step',userId,step);
+        return true;
+      });
+    },
     session(raw,now=Date.now()) {
       if(!raw || raw.length>200)return null;
       const s=one('SELECT s.token_hash,s.user_id,s.csrf_secret,s.expires_at,u.email,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?',sha256(raw));
       return s && s.expires_at>now ? s : null;
     },
     revokeSession:raw=>run('DELETE FROM sessions WHERE token_hash=?',sha256(raw)),
+    revokeAllSessions(userId) {
+      return tx(()=>{
+        const removed=run('DELETE FROM sessions WHERE user_id=?',userId).changes;
+        audit(userId,null,'session.revoked_all',{sessions:removed});
+        return removed;
+      });
+    },
     listSites:()=>q('SELECT * FROM sites ORDER BY created_at DESC,slug'),
     getSite:slug=>one('SELECT * FROM sites WHERE slug=?',slug),
     createSite(input,actorId) {
