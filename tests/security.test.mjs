@@ -161,7 +161,7 @@ test('session expiration and csrf integrity',()=>{
 });
 test('temporary production store cannot accidentally start without explicit mode',async()=>{
  const {startFromEnvironment}=await import('../src/server.mjs');
- assert.throws(()=>startFromEnvironment({OWNER_EMAIL:'owner@example.com',OWNER_PASSWORD:password,PUBLIC_ORIGIN:origin}),/durable production store/);
+ await assert.rejects(startFromEnvironment({OWNER_EMAIL:'owner@example.com',OWNER_PASSWORD:password,PUBLIC_ORIGIN:origin}),/No persistent database configured/);
 });
 test('owner can turn off site catalog; then editors are blocked by server',async()=>{
   const set=await request('/owner/sites/site-b/feature',{method:'POST',cookie:ownerCookie,data:{csrf,feature:'catalog',enabled:'false'}});
