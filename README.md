@@ -43,3 +43,18 @@ The original root `index.html` remains untouched when this app is pushed to the 
 ## Documentation
 
 Read [Architecture and security limits](docs/ARCHITECTURE.md). Apply the proposed `supabase/` migrations **only** to a NEW independent Supabase instance after review; never to another project's DB.
+
+## v0.4 — Premium command center (development)
+
+This release adds a premium, responsive **owner command center** with:
+
+- Real counts of sites, live vs suspended status, tenant products, memberships and pending invitations, calculated on the server from the demo database.
+- Site search, package-distribution charts based on real counts, detailed site roster, one-click navigation to tenant dashboards, and create-site form.
+- Dedicated panels for plans/limits, tenant staff, audit history, security posture and a **clearly labeled** roadmap for sales, fulfillment, payment, CRM, marketing, custom domains and monitoring.
+- A strictly owner-only CSV operational report with spreadsheet-formula injection mitigation. The report never contains passwords, tokens or customer data.
+- A refined public homepage and tenant dashboard color system, light decorative CSS animations and `prefers-reduced-motion` support.
+- **No new authentication shortcut.** All owner/tenant privileges, payments (disabled), and plan limits remain server-validated.
+
+This is an **ephemeral preview**, not a production-grade SaaS. Do not store sensitive customer data, real financial records, or issue live subscriptions. A dedicated durable database, MFA, billing, monitoring, secure multi-tenant domain routing and an independent professional security review must precede launch.
+
+Run `npm run check && npm test` after edits. The `tests/owner-console.test.mjs` cases verify owner-only reporting, count accuracy, injection mitigation and no-store/security headers.

@@ -1,6 +1,6 @@
 {
   "name": "jame3-independent-platform",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.13 <23" },
@@ -8,6 +8,6 @@
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/security.mjs && node --check src/templates.mjs"
+    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/security.mjs && node --check src/templates.mjs && node --check src/owner-console.mjs && node --check src/reports.mjs && node --check public/owner-console.mjs"
   }
 }

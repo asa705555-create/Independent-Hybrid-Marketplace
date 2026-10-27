@@ -130,6 +130,22 @@ export function createStore(path = ':memory:', opts = {}) {
         audit(user.id,i.site_id,'invite.accepted',{role:i.role});return user.id;
       });
     },
+    // All metrics are aggregated on the server; no cross-tenant queries for staff.
+    ownerSnapshot(now=Date.now()) {
+      const totals={
+        products:one('SELECT count(*) AS n FROM products').n,
+        members:one('SELECT count(*) AS n FROM memberships').n,
+        invites:one('SELECT count(*) AS n FROM invitations WHERE used_at IS NULL AND expires_at>?',now).n,
+        bySite:{}
+      };
+      for (const row of q(`SELECT s.id, count(DISTINCT p.id) AS products,
+          count(DISTINCT m.user_id) AS staff
+        FROM sites s LEFT JOIN products p ON p.site_id=s.id
+        LEFT JOIN memberships m ON m.site_id=s.id GROUP BY s.id`)) {
+        totals.bySite[row.id]={products:row.products,staff:row.staff};
+      }
+      return totals;
+    },
     listAudit:()=>q('SELECT event,site_id,created_at FROM audit_events ORDER BY created_at DESC LIMIT 30'),
     seedForPreview(ownerId) {
       if(this.listSites().length || !opts.seed)return;

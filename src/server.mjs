@@ -4,13 +4,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createStore } from './store.mjs';
 import { plans, escapeHtml, validEmail, validColor, validSlug, validateSite, can, entitlement, parseCookie, parseForm, verifyCsrf } from './security.mjs';
-import { layout, hub, signin, ownerPanel, workspaceIndex, siteDashboard, sitePublic, invitePage, pageError } from './templates.mjs';
+import { layout, hub, signin, workspaceIndex, siteDashboard, sitePublic, invitePage, pageError } from './templates.mjs';
+import { ownerCommandCenter } from './owner-console.mjs';
+import { sitesCsv } from './reports.mjs';
 
 const projectRoot = path.resolve(fileURLToPath(new URL('..',import.meta.url)));
 const publicRoot = path.join(projectRoot,'public');
 const sessionCookie = 'jame3_session';
 const staticPaths = new Map([
   ['/assets/platform.css',['platform.css','text/css; charset=utf-8']],
+  ['/assets/premium.css',['premium.css','text/css; charset=utf-8']],
+  ['/assets/owner-console.css',['owner-console.css','text/css; charset=utf-8']],
+  ['/assets/owner-console.mjs',['owner-console.mjs','text/javascript; charset=utf-8']],
   ...['index.html','styles.css','app.mjs','core.mjs','catalog.mjs'].map(name=>['/marketplace/'+name,[name,name.endsWith('.css')?'text/css; charset=utf-8':name.endsWith('.mjs')?'text/javascript; charset=utf-8':'text/html; charset=utf-8']])
 ]);
 
@@ -79,7 +84,15 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
     if(method==='GET' && pathname==='/login')return session?redirect(res,isOwner?'/owner':'/workspaces'):response(res,200,signin());
     if(method==='GET' && pathname==='/owner') {
       if(!ownerOnly())return;
-      return response(res,200,ownerPanel(store.listSites(),store.listAudit(),session));
+      return response(res,200,ownerCommandCenter(store.listSites(),store.listAudit(),session,{statistics:store.ownerSnapshot(now())}));
+    }
+    // Owner-only CSV export: available exclusively after server-side owner check.
+    // The serializer neutralizes spreadsheet formulas to prevent CSV injection.
+    if(method==='GET' && pathname==='/owner/reports/sites.csv') {
+      if(!ownerOnly())return;
+      const csv=sitesCsv(store.listSites(),store.ownerSnapshot(now()));
+      return response(res,200,csv,{'Content-Type':'text/csv; charset=utf-8',
+        'Content-Disposition':'attachment; filename="jame3-sites-report.csv"'});
     }
     if(method==='GET' && pathname==='/workspaces') {
       if(!authorized())return;
