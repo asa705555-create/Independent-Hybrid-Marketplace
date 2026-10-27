@@ -79,3 +79,29 @@ Run `npm run check && npm test` after edits. The `tests/owner-console.test.mjs` 
 - **Render's Free PostgreSQL is a 30-day disposable test database**, not durable production storage. No automatic backups; upgrade and get a separately approved price before live users.
 
 For the safe setup sequence and restrictions see [Postgres Runbook](docs/POSTGRES_RUNBOOK.md).
+
+## v0.7 — Premium ERP analytics added to both control panels
+
+The existing **green/gold Premium owner dashboard is unchanged**; analytics is a **new reusable, same-brand screen** linked from it. Existing site creation, roles, plans, catalog, audit and MFA are not reimplemented.
+
+- `/owner/erp`: private Super Admin analytics across accessible hosted sites, with site/branch filters.
+- `/dashboard/:slug/erp`: private per-brand analytics, with server-enforced tenant membership and an active `analytics` plan entitlement. Other brands' data cannot be requested through a different slug or modified query parameters.
+- `/demo/erp`: public **fictional demo only**, using no customer or production data; useful for design review without issuing administrative credentials.
+- 17 optional widgets matching the supplied Arabic dashboard functional specifications: KPIs, weekly comparisons, area/donut charts, product rankings, geographic bars, orders, expenses, invoice trends, payment methods, top sellers and add-ons.
+- Interactive date range, branch selector, product search, Arabic/English direction switch, widget hide/show, drag ordering, resize widths, reset and scoped localStorage preferences.
+- Real data adapter (`/api/erp/context`) reports actual tenant-local product totals. All other commerce widgets show empty state until real sales/orders are integrated. The sample mode uses conspicuously **fictional** data generated only in the client.
+- Original owner-console visual colors (`#102b25`, moss green, warm gold), typography, sidebar treatment and radii are retained via `public/owner-console.css` and additive `public/erp-dashboard.css`.
+- Server-side authorization, no-store private responses, CSP and same-origin JavaScript. The public demo has no admin endpoints.
+
+### Testing
+
+```bash
+npm run check
+npm test
+```
+
+Tests cover 17-widget registry, role and package authorization, cross-tenant IDOR attempts, forged branch filters, parameter pollution, owner aggregation, content security policy, output encoding and file allowlisting.
+
+### Deployment and known limits
+
+For a free isolated preview, set `DEMO_EPHEMERAL=1`, `DEMO_SEED=1`, a **unique** 20+-character owner password (not in Git), `PUBLIC_ORIGIN` to the deployment URL and `NODE_ENV=production`. Free-preview storage is disposable. Do **not** use fake ERP sales as a source of financial decisions. No real billing/receipts/payment provider is enabled.
