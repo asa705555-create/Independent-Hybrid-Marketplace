@@ -58,3 +58,12 @@ This release adds a premium, responsive **owner command center** with:
 This is an **ephemeral preview**, not a production-grade SaaS. Do not store sensitive customer data, real financial records, or issue live subscriptions. A dedicated durable database, MFA, billing, monitoring, secure multi-tenant domain routing and an independent professional security review must precede launch.
 
 Run `npm run check && npm test` after edits. The `tests/owner-console.test.mjs` cases verify owner-only reporting, count accuracy, injection mitigation and no-store/security headers.
+
+## v0.5 — Owner MFA + safer operational tooling
+
+- Optional owner-only **TOTP MFA**: if configured via a private `OWNER_TOTP_SECRET`, a new one-time six-digit code is mandatory at login.
+- One-time code replay prevention, owner-only revoke-all-sessions, account/address login rate-limiting.
+- A demo-only SQLite backup script with 0600 file permissions and restore tests. **Render free service storage is still ephemeral.**
+- Details: [Security & Operations](docs/SECURITY_OPERATIONS.md).
+- Previously shared preview credentials should be rotated; do NOT store live secrets in GitHub.
+- Billing, production PostgreSQL, secure account recovery, payment processors, and real orders are **not** implemented yet.
