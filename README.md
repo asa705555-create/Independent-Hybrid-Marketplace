@@ -1,4 +1,4 @@
-# جامع (working title) — Independent Multi-Site Platform v0.3
+# جامع (working title) — Independent Multi-Site Platform v0.6
 
 **Third independent project**, unrelated to every existing apparel-brand website, store, database or marketing system.
 
@@ -59,11 +59,23 @@ This is an **ephemeral preview**, not a production-grade SaaS. Do not store sens
 
 Run `npm run check && npm test` after edits. The `tests/owner-console.test.mjs` cases verify owner-only reporting, count accuracy, injection mitigation and no-store/security headers.
 
-## v0.5 — Owner MFA + safer operational tooling
+## v0.5 — Owner MFA + safer operational tooling (feature branch)
 
-- Optional owner-only **TOTP MFA**: if configured via a private `OWNER_TOTP_SECRET`, a new one-time six-digit code is mandatory at login.
-- One-time code replay prevention, owner-only revoke-all-sessions, account/address login rate-limiting.
-- A demo-only SQLite backup script with 0600 file permissions and restore tests. **Render free service storage is still ephemeral.**
-- Details: [Security & Operations](docs/SECURITY_OPERATIONS.md).
-- Previously shared preview credentials should be rotated; do NOT store live secrets in GitHub.
-- Billing, production PostgreSQL, secure account recovery, payment processors, and real orders are **not** implemented yet.
+- Configurable **owner TOTP (RFC6238)**; when a private `OWNER_TOTP_SECRET` is set the owner needs both password and a fresh 6-digit code.
+- One-time TOTP step enforcement in the preview DB, cross-account/address login throttling and a protected **revoke all owner sessions** control.
+- A read-only SQLite snapshot tool for local preview backups and a verified restore test. This is **not** durable Render production storage.
+- Detailed setup and limitations: [`docs/SECURITY_OPERATIONS.md`](docs/SECURITY_OPERATIONS.md).
+- Existing v0.4 previews need to rotate any previously disclosed passwords. The new release should use **brand-new secrets** stored only in private Render environment settings.
+- **Still not a production release**. A dedicated permanent Postgres service and proper identity/recovery and payments remain unfinished; no paid service was provisioned by this release.
+
+
+## v0.6 — Dedicated PostgreSQL staging support
+
+- Added a standalone async PostgreSQL adapter (`src/postgres-store.mjs`) so each site, account, session, product, invitation and audit event can persist in its **own isolated database**.
+- Added a migration with immutable checksums and advisory locking (`db/001_postgres_control_plane.sql`, `scripts/migrate-postgres.mjs`). The PostgreSQL schema is separate from the old Supabase design draft.
+- All application routes now await the store, so the SQLite preview works unchanged and the same routes can use PostgreSQL. Runtime rejects a missing database unless `DEMO_EPHEMERAL=1` is set for a test preview.
+- New `/ready` endpoint checks database health; PostgreSQL bootstraps the owner once, preserving credentials across deployments; production PostgreSQL requires MFA.
+- Expanded tests exercise async routes, parameter binding, transaction/lock behavior and immutable migrations. No real payments or shipping have been enabled.
+- **Render's Free PostgreSQL is a 30-day disposable test database**, not durable production storage. No automatic backups; upgrade and get a separately approved price before live users.
+
+For the safe setup sequence and restrictions see [Postgres Runbook](docs/POSTGRES_RUNBOOK.md).
