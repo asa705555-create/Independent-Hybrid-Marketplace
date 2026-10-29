@@ -113,14 +113,23 @@ For a free isolated preview, set `DEMO_EPHEMERAL=1`, `DEMO_SEED=1`, a **unique**
 
 These links only toggle the labels and navigation context of the public **fictional demo**. They do not grant owner or tenant access. The protected application routes remain `/owner/erp` and `/dashboard/:slug/erp` and require a private server with real authentication and per-brand authorization.
 
-## v0.8 — Scoped, consistent demonstration analytics (non-production)
 
-- Retains the **existing Premium green/gold design**, routes, owner and brand auth, plans and other functionality. No redesign or brand merge.
-- Fixes the owner/brand **preview switch links** so they open `/demo/erp?view=...` rather than accidentally returning to the marketplace homepage. Only the expressly configured preview service has the option `ERP_PUBLIC_PREVIEW=1` to show the demo dashboard on `/`. Other services retain the public hub.
-- Moves all fictional analytics into the testable, deterministic, isolated client fixture `public/erp-demo-data.mjs`. KPIs, invoices, charts, payment-method splits, top products/users, and expenses all derive from individual sample rows. Date, brand and product filters now filter records rather than scaling headline numbers.
-- **Demo brand view** is restricted to one fictional site, while demo owner view can filter the three fictional sites. URL role switching is only a design preview; actual auth checks in `/owner/erp`, `/dashboard/:slug/erp` and `/api/erp/context` are unchanged. No private tenant records are exposed to the public demo.
-- Improves reusable analytics widgets: ranking variant selector actually groups products, payment series reflects separate payment methods, yearly payment chart uses relevant transactions, and local layout settings use separate keys for owner versus brand demo.
-- For real authenticated dashboards: only the product count and scoped product names are operational. Billing, money, customer and order figures stay **empty/unconnected** unless a source is integrated; no demo totals are ever silently promoted to production figures.
-- Adds 14 fixture/auth test cases and Chromium rendering checks (desktop/mobile). This is **not** a production penetration test or a real payments integration.
+## v0.8 — Protected inventory insights without duplicating the Premium dashboard
 
-**IMPORTANT:** The GitHub repository is currently public; all data here is fictional and contains no production credentials. For production, create an approved dedicated backed-up PostgreSQL, independent storage, real RLS and durable auth audit before onboarding external brands or collecting money.
+The original dark-green/gold owner and tenant dashboards and their 17 analytics widgets remain intact. This incremental release fixes operational functionality, not the brand identity:
+
+- Server-authorized inventory snapshot within the existing owner or tenant context: filtered catalog counts, stock units, low/out-of-stock products, and inventory book-value **estimate** in piasters (decimal string, avoiding JS integer overflow).
+- Product-name search, site/branch selection and CSV download are evaluated **after** server-side permission, tenant, and plan checks. Tenant members cannot query other brands by changing scope, site or branch query parameters.
+- A spreadsheet-formula-safe CSV inventory export contains only authorized sites and products; no sessions, emails, passwords, API keys or private financial records.
+- Multiple-site picker preserves choices through language switches, and search safely refreshes the authorized API with protection against late responses.
+- Public previews remain fictional. Date-range selection controls sample commerce charts only; real stock is a current snapshot, not historical sales. Sample payment charts distinguish four payment channels rather than showing cost/profit proxies.
+- A new inventory ribbon and the seven-column add-ons table extend the existing premium styling; mobile overflow is contained. Original owner command center, plan controls, and tenant permissions are not reimplemented.
+
+### API and preview routes
+
+- `GET /api/erp/context?scope=owner|tenant&site=<slug>&q=<name>&branch_id[]=<site-id>` — authorized JSON.
+- `GET /api/erp/inventory.csv?...` — same access policy; download only when authenticated.
+- `/demo/erp?view=owner` and `/demo/erp?view=brand` — public **fictional design previews**.
+- `/owner/erp` and `/dashboard/:slug/erp` — protected dashboards, not public preview shortcuts.
+
+See [ERP v0.8 security and testing notes](docs/ERP_V08.md). No real payments, orders, invoices, shipping provider or durable production database is integrated by this release. Demo Render instances use disposable preview storage; do not store real customer data.

@@ -10,9 +10,18 @@
 
 .erp-preview-roles{display:flex;flex-wrap:wrap;gap:6px}.erp-view-active{background:#deefe1!important;border-color:#88b899!important;color:#2d694e!important}
 @media(max-width:610px){.erp-preview-roles{width:100%}.erp-preview-roles a{flex:1;text-align:center}}
-/* When mobile navigation is closed it must be absent from pointer/focus flow.
-   The original green/gold Premium styles remain unchanged. */
-@media(max-width:860px){
-  .erp-sidebar:not(.open){visibility:hidden;pointer-events:none}
-  .erp-sidebar.open{visibility:visible;pointer-events:auto}
-}
+
+/* v0.8: compact inventory status ribbon follows the existing Premium palette. */
+.erp-operational{background:#fff;border:1px solid #e2ebe2;border-radius:16px;padding:17px 19px;margin-bottom:19px;box-shadow:var(--oc-shadow)}
+.erp-operational-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.erp-operational-head>div{display:flex;flex-direction:column;gap:4px}.erp-operational-head b{color:#28533d;font-size:13px}.erp-operational-head small{color:#849688;font-size:10px}
+.erp-operational-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.erp-operational-card{min-width:0;background:#f5f9f3;padding:15px;border:1px solid #e4efe4;border-radius:11px;display:flex;flex-direction:column;gap:8px}
+.erp-operational-card small{color:#648371;font-size:10px}.erp-operational-card b{color:#205d43;font:700 18px Manrope,'IBM Plex Sans Arabic',sans-serif;overflow-wrap:anywhere}
+.erp-operational-card:nth-child(4){background:#fff7f1;border-color:#f4eadc}.erp-operational-card:nth-child(4) b{color:#916d43}
+.erp-toolbar select[multiple]{height:80px;overflow:auto;min-height:80px}.erp-toolbar select[multiple] option{padding:5px}
+.erp-widget-handle:focus-visible,.erp-ghost-btn:focus-visible,.erp-widget-controls button:focus-visible{outline:2px solid #3b926c;outline-offset:3px}
+@media(max-width:900px){.erp-operational-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:610px){.erp-operational-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.erp-operational-head{align-items:flex-start;flex-direction:column}}
+
+.erp-table-scroll{overflow-x:auto;max-width:100%}.erp-table-scroll .erp-mini-table{min-width:640px}
