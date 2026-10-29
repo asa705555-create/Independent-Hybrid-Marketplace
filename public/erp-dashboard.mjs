@@ -40,8 +40,9 @@ function setupDemoPreviewRoles(){
  const actions=document.querySelector('.erp-heading-actions');
  if(!actions)return;
  const container=document.createElement('div');container.className='erp-preview-roles';
- const ownerLink=document.createElement('a');ownerLink.href='/demo/erp?view=owner';ownerLink.textContent='معاينة الإدارة';
- const brandLink=document.createElement('a');brandLink.href='/demo/erp?view=brand';brandLink.textContent='معاينة البراند';
+ const previewBase=location.pathname.startsWith('/demo/erp')?'/demo/erp':'/';
+ const ownerLink=document.createElement('a');ownerLink.href=previewBase+'?view=owner';ownerLink.textContent='معاينة الإدارة';
+ const brandLink=document.createElement('a');brandLink.href=previewBase+'?view=brand';brandLink.textContent='معاينة البراند';
  for(const [a,v] of [[ownerLink,'owner'],[brandLink,'brand']]){
   a.className='erp-ghost-btn'+(v===view?' erp-view-active':'');
   if(v===view)a.setAttribute('aria-current','page');
