@@ -34,7 +34,7 @@ const sym = (name, size=20) => {
 };
 const nav = [
   ['overview','نظرة عامة','overview'],['sites','إدارة المواقع','sites'],['plans','الباقات والاشتراكات','layers'],
-  ['commerce','الطلبات والتجارة','boxes'],['insights','التحليلات والتقارير','chart'],['customers','الفرق والعملاء','users'],
+  ['commerce','الطلبات والتجارة','boxes'],['erp','تحليلات ERP المتقدمة','chart'],['insights','التحليلات والتقارير','chart'],['customers','الفرق والعملاء','users'],
   ['marketing','التسويق والنمو','sparkle'],['security','الأمان وسجل الأنشطة','shield'],['system','إعدادات المنصة','settings']
 ];
 const field=(label,key,{type='text',value='',extra=''}={})=>`<label class="oc-field"><span>${esc(label)}</span><input type="${type}" name="${key}" value="${esc(value)}" ${extra}></label>`;
@@ -69,7 +69,7 @@ export function ownerCommandCenter(sites,audits,session,{statistics={},message='
   <body class="oc-body"><div class="oc-app">
    <aside class="oc-sidebar" id="oc-sidebar" aria-label="تنقل لوحة المالك"><a href="/" class="oc-brand"><span class="oc-brand-symbol">ج</span><span><b>جامع<span class="oc-gold">.</span></b><small>OPERATING SYSTEM</small></span></a>
     <div class="oc-workspace"><span class="oc-workspace-mark">${sym('layers',18)}</span><span><b>لوحة مالك المنصة</b><small>Master workspace</small></span>${sym('shield',16)}</div>
-    <p class="oc-nav-eyebrow">القائمة الرئيسية</p><nav aria-label="أقسام لوحة التحكم" class="oc-nav">${nav.map(([id,label,ico],i)=>`<a href="#${id}" class="oc-nav-link ${i===0?'active':''}" data-section-link="${id}">${sym(ico,19)}<span>${label}</span></a>`).join('')}</nav>
+    <p class="oc-nav-eyebrow">القائمة الرئيسية</p><nav aria-label="أقسام لوحة التحكم" class="oc-nav">${nav.map(([id,label,ico],i)=>`<a href="${id==='erp'?'/owner/erp':'#'+id}" class="oc-nav-link ${i===0?'active':''}" data-section-link="${id}">${sym(ico,19)}<span>${label}</span></a>`).join('')}</nav>
     <div class="oc-sidebar-bottom"><div class="oc-secure-flag"><span></span> بوابة خاصة بالمالك</div><a href="/" class="oc-view-site">${sym('globe',17)} معاينة الموقع الرئيسي ${sym('external',15)}</a></div>
    </aside>
    <div class="oc-main-wrap"><header class="oc-top"><div class="oc-top-leading"><button type="button" class="oc-mobile-toggle" id="oc-menu" aria-expanded="false" aria-controls="oc-sidebar" aria-label="فتح القائمة">${sym('menu',22)}</button><div class="oc-breadcrumb">المنصة <span>/</span> إدارة الأعمال <span>/</span> <b>مركز القيادة</b></div></div><div class="oc-top-actions"><span class="oc-live-dot">نظام المعاينة متصل</span><a class="oc-visit" href="/">${sym('globe',18)} <span>عرض المنصة</span></a><span class="oc-owner-avatar" title="مالك المنصة">م</span></div></header>

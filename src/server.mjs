@@ -8,6 +8,7 @@ import { plans, escapeHtml, validEmail, validColor, validSlug, validateSite, can
 import { layout, hub, signin, workspaceIndex, siteDashboard, sitePublic, invitePage, pageError } from './templates.mjs';
 import { ownerCommandCenter } from './owner-console.mjs';
 import { sitesCsv } from './reports.mjs';
+import {erpDashboardPage, erpContext} from './erp-dashboard.mjs';
 
 const projectRoot = path.resolve(fileURLToPath(new URL('..',import.meta.url)));
 const publicRoot = path.join(projectRoot,'public');
@@ -17,6 +18,9 @@ const staticPaths = new Map([
   ['/assets/premium.css',['premium.css','text/css; charset=utf-8']],
   ['/assets/owner-console.css',['owner-console.css','text/css; charset=utf-8']],
   ['/assets/owner-console.mjs',['owner-console.mjs','text/javascript; charset=utf-8']],
+  ['/assets/erp-dashboard.css',['erp-dashboard.css','text/css; charset=utf-8']],
+  ['/assets/erp-dashboard.mjs',['erp-dashboard.mjs','text/javascript; charset=utf-8']],
+  ['/assets/erp-demo-data.mjs',['erp-demo-data.mjs','text/javascript; charset=utf-8']],
   ...['index.html','styles.css','app.mjs','core.mjs','catalog.mjs'].map(name=>['/marketplace/'+name,[name,name.endsWith('.css')?'text/css; charset=utf-8':name.endsWith('.mjs')?'text/javascript; charset=utf-8':'text/html; charset=utf-8']])
 ]);
 
@@ -42,7 +46,7 @@ function cleanPath(url){try{return new URL(url,'http://localhost').pathname;}cat
 function numberField(x,max) {if(typeof x!=='string'||!/^\d{1,12}$/.test(x))return null;const n=Number(x);return Number.isSafeInteger(n)&&n<=max?n:null;}
 function normalizeOrigin(raw){try{const url=new URL(raw);return url.origin;}catch{return null;}}
 
-export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, ownerTotpSecret=null, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
+export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, ownerTotpSecret=null, publicPreviewHome=false, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
   if(!store)throw Error('Explicit isolated store required');
   const allowedOrigin=normalizeOrigin(publicOrigin);
   if(!allowedOrigin)throw Error('PUBLIC_ORIGIN must be set correctly');
@@ -86,7 +90,44 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
       try { await store.health?.(); return response(res,200,'READY',{'Content-Type':'text/plain; charset=utf-8'}); }
       catch { return response(res,503,'UNAVAILABLE',{'Content-Type':'text/plain; charset=utf-8'}); }
     }
-    if(method==='GET' && pathname==='/')return response(res,200,hub(await store.listSites(),currentUser));
+    // Public demo uses fake fixture data only. NO privileged data or auth bypass.
+    if(method==='GET' && pathname==='/demo/erp') {
+      const view=new URL(req.url,allowedOrigin).searchParams.get('view')==='owner'?'owner':'brand';
+      return response(res,200,erpDashboardPage({scope:'demo',previewRole:view}));
+    }
+    if(method==='GET' && pathname==='/owner/erp') {
+      if(!ownerOnly())return;
+      return response(res,200,erpDashboardPage({scope:'owner'}));
+    }
+    const tenantErp=method==='GET'&&pathname.match(/^\/dashboard\/([a-z][a-z0-9-]{1,39})\/erp$/);
+    if(tenantErp){
+      if(!authorized())return;
+      const scope=await erpContext(store,{isOwner,user:currentUser,slug:tenantErp[1]});
+      if(scope.status!==200)return error(scope.status,scope.status===403?'صلاحيات غير كافية':'لوحة غير موجودة','هذه التقارير غير متاحة لدورك أو باقتك.');
+      const site=await store.getSite(tenantErp[1]);
+      return response(res,200,erpDashboardPage({scope:'tenant',site}));
+    }
+    if(method==='GET'&&pathname==='/api/erp/context'){
+      if(!authorized())return;
+      const reqUrl=new URL(req.url,allowedOrigin);
+      const isTenantScope=reqUrl.searchParams.get('scope')==='tenant';
+      const requestedScope=reqUrl.searchParams.get('scope');
+      const slug=reqUrl.searchParams.get('site');
+      const branchIds=reqUrl.searchParams.getAll('branch_id[]');
+      if(reqUrl.searchParams.getAll('site').length>1 || branchIds.length>30)return error(400,'فلاتر غير صالحة','الطلب يحتوي قيمًا مكررة أو كثيرة.');
+      if(!['owner','tenant'].includes(requestedScope))return error(400,'نطاق غير صالح','اختر لوحة مصرّحًا بها.');
+      if(!isTenantScope&&!isOwner)return error(403,'صلاحيات غير كافية','نطاق المالك خاص بالمالك فقط.');
+      const target=await erpContext(store,{isOwner,user:currentUser,slug:isTenantScope?slug:null,branchIds});
+      if(target.status!==200)return error(target.status,'لا يمكن عرض البيانات','هذا الموقع غير متاح لحسابك.');
+      return response(res,200,JSON.stringify(target.value),{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+    }
+    if(method==='GET' && pathname==='/'){
+      // Only the explicitly opted-in PUBLIC design-preview service uses this homepage.
+      // Private owner and tenant routes still enforce their own server-side roles.
+      if(publicPreviewHome){const view=new URL(req.url,allowedOrigin).searchParams.get('view')==='owner'?'owner':'brand';
+        return response(res,200,erpDashboardPage({scope:'demo',previewRole:view}));}
+      return response(res,200,hub(await store.listSites(),currentUser));
+    }
     if(method==='GET' && pathname==='/login')return session?redirect(res,isOwner?'/owner':'/workspaces'):response(res,200,signin({mfaEnabled:Boolean(totpKey)}));
     if(method==='GET' && pathname==='/owner') {
       if(!ownerOnly())return;
@@ -245,7 +286,7 @@ export async function startFromEnvironment(env=process.env) {
   const ownerId=await store.bootstrapOwner(email,password);
   if(usingPg)await store.seedForPreview(ownerId,env.DEMO_SEED==='1');
   else await store.seedForPreview(ownerId);
-  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production',ownerTotpSecret:env.OWNER_TOTP_SECRET||null});
+  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production',ownerTotpSecret:env.OWNER_TOTP_SECRET||null,publicPreviewHome:env.ERP_PUBLIC_PREVIEW==='1'});
   const server=http.createServer((req,res)=>{
     Promise.resolve(createAppHandler(req,res)).catch(err=>{
       console.error('Unhandled request error:',err?.message||'unknown');
