@@ -110,3 +110,71 @@ test('owner and brand previews preserve the same premium layout and 17 widget se
  for(const html of [owner,brand]){assert.equal((html.match(/class="erp-widget erp-widget-/g)||[]).length,17);assert.match(html,/owner-console\.css/);assert.match(html,/data-scope="demo"/)}
  assert.match(owner,/الإدارة الرئيسية/);assert.match(brand,/Atelier/);
 });
+
+test('authorized owner inventory snapshot has real stock numbers, never simulated revenue',async()=>{
+ const res=await req('/api/erp/context?scope=owner',cookieOwner);assert.equal(res.status,200);
+ const data=await res.json();assert.equal(data.productsCount,2);
+ assert.equal(data.totalProductsCount,2);assert.equal(data.stockUnits,14);
+ assert.equal(data.lowStock,0);assert.equal(data.outOfStock,0);
+ assert.equal(data.inventoryPiasters,'156000');
+ assert.equal(data.financialIntegrated,false);
+ assert.ok(data.products.every(p=>Object.hasOwn(p,'stock')));
+});
+
+test('product search runs within each authorized tenant and is not a client-side data leak',async()=>{
+ const allowed=await req('/api/erp/context?scope=tenant&site=alpha-erp&q=Allowed',cookieManager);
+ assert.equal(allowed.status,200);const context=await allowed.json();assert.equal(context.productsCount,1);
+ assert.equal(context.stockUnits,6);
+ assert.equal(context.products[0].name,'Allowed Widget Product');
+ assert.ok(!JSON.stringify(context).includes('Sensitive Beta Product'));
+ const missing=await req('/api/erp/context?scope=tenant&site=alpha-erp&q=Sensitive',cookieManager);
+ assert.equal(missing.status,200);const noMatches=await missing.json();assert.equal(noMatches.productsCount,0);
+ assert.equal(noMatches.totalProductsCount,1);
+ assert.equal(noMatches.inventoryPiasters,'0');
+});
+
+test('inventory CSV is role-checked and cannot expose another brand via forged slug or branch',async()=>{
+ assert.equal((await req('/api/erp/inventory.csv?scope=owner')).status,303);
+ assert.equal((await req('/api/erp/inventory.csv?scope=owner',cookieManager)).status,403);
+ assert.equal((await req('/api/erp/inventory.csv?scope=tenant&site=alpha-erp',cookieViewer)).status,403);
+ assert.equal((await req('/api/erp/inventory.csv?scope=tenant&site=starter-erp',cookieStarter)).status,403);
+ assert.equal((await req('/api/erp/inventory.csv?scope=tenant&site=beta-erp',cookieManager)).status,403);
+ assert.equal((await req('/api/erp/inventory.csv?scope=tenant&site=alpha-erp&branch_id%5B%5D='+encodeURIComponent(b.id),cookieManager)).status,403);
+ const response=await req('/api/erp/inventory.csv?scope=tenant&site=alpha-erp',cookieManager);
+ assert.equal(response.status,200);
+ assert.match(response.headers.get('content-type'),/text\/csv/);
+ assert.match(response.headers.get('content-disposition'),/attachment/);
+ assert.equal(response.headers.get('cache-control'),'no-store');
+ const csv=await response.text();assert.match(csv,/Allowed Widget Product/);
+ assert.doesNotMatch(csv,/Sensitive Beta Product|password_hash|csrf_secret|token_hash/);
+});
+
+test('owner export handles branch scoping and user-entered spreadsheet formulas safely',async()=>{
+ db.addProduct(a,'=HYPERLINK("https://example.invalid","unsafe")',1500,0,owner);
+ db.addProduct(a,'Low stock item',250,3,owner);
+ const url='/api/erp/inventory.csv?scope=owner&branch_id%5B%5D='+encodeURIComponent(a.id);
+ const response=await req(url,cookieOwner);assert.equal(response.status,200);
+ const csv=await response.text();assert.match(csv,/"'=HYPERLINK/);
+ assert.match(csv,/Low stock item/);assert.doesNotMatch(csv,/Sensitive Beta Product/);
+ const ctx=await (await req('/api/erp/context?scope=tenant&site=alpha-erp',cookieManager)).json();
+ assert.equal(ctx.outOfStock,1);assert.equal(ctx.lowStock,1);
+ assert.equal(ctx.productsCount,3);assert.equal(ctx.stockUnits,9);
+});
+
+test('query pollution, malformed dates and oversized filters are rejected for JSON and CSV',async()=>{
+ const bad=[
+  '?scope=owner&scope=tenant','?scope=owner&site=alpha-erp',
+  '?scope=owner&q=x&q=y','?scope=owner&q='+encodeURIComponent('a'.repeat(81)),
+  '?scope=owner&from=2026-02-31&to=2026-03-31',
+  '?scope=owner&from=2026-02-01','?scope=owner&from=2026-03-01&to=2026-02-01',
+  '?scope=owner&from=2021-01-01&to=2026-12-01',
+  '?scope=owner&branch_id%5B%5D=x&branch_id%5B%5D=x',
+  '?scope=owner&q='+encodeURIComponent('bad\rline')
+ ];
+ for(const suffix of bad){
+  const request=await req('/api/erp/context'+suffix,cookieOwner);
+  assert.equal(request.status,400,`Unexpected status for ${suffix}`);
+  const csv=await req('/api/erp/inventory.csv'+suffix,cookieOwner);
+  assert.equal(csv.status,400,`CSV accepted invalid filter: ${suffix}`);
+ }
+});

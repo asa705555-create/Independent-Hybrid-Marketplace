@@ -34,16 +34,34 @@ const svg=(name)=>{
  * A user can access only their own tenant. No cross-site comparisons are
  * permitted for a tenant, including via manipulated query parameters.
  */
-export async function erpContext(store,{isOwner=false,user,slug=null,branchIds=[]}={}){
+export async function erpContext(store,{isOwner=false,user,slug=null,branchIds=[],productQuery=''}={}){
+ if(typeof productQuery!=='string'||productQuery.length>80||/[\u0000-\u001f\u007f]/.test(productQuery))return {status:400};
+ const query=productQuery.trim().toLocaleLowerCase('ar');
+ const summarize=(sites,productGroups,scope,scopeId)=>{
+  // All products are queried only AFTER role, plan and branch scope verification.
+  // Never use a client-supplied site ID to expand a tenant's authority.
+  const records=sites.flatMap((site,i)=>productGroups[i].map(p=>({
+   id:String(p.id),name:String(p.name),siteId:site.id,
+   siteName:site.name,stock:Number(p.stock)||0,pricePiasters:String(p.price_piasters||0)
+  })));
+  const filtered=query?records.filter(p=>p.name.toLocaleLowerCase('ar').includes(query)):records;
+  const stockUnits=filtered.reduce((n,p)=>n+p.stock,0);
+  const inventoryPiasters=filtered.reduce((n,p)=>n+BigInt(p.pricePiasters)*BigInt(p.stock),0n);
+  return {scope,scopeId,sites:sites.map(s=>({id:s.id,slug:s.slug,name:s.name,status:s.status})),
+   products:filtered.map(({id,name,siteId,stock})=>({id,name,siteId,stock})),
+   productsCount:filtered.length,totalProductsCount:records.length,stockUnits,
+   lowStock:filtered.filter(p=>p.stock>0&&p.stock<=5).length,
+   outOfStock:filtered.filter(p=>p.stock===0).length,
+   inventoryPiasters:String(inventoryPiasters),dataMode:'operational',financialIntegrated:false};
+ };
+
  if(!user) return {status:401};
  if(isOwner && !slug){
   const allSites=await store.listSites();
   if(branchIds.length && branchIds.some(id=>!allSites.some(s=>s.id===id)))return {status:403};
   const sites=branchIds.length?allSites.filter(s=>branchIds.includes(s.id)):allSites;
   const productsBySite=await Promise.all(sites.map(s=>store.listProducts(s.id)));
-  return {status:200,value:{scope:'owner',scopeId:'all',sites:sites.map(s=>({id:s.id,slug:s.slug,name:s.name,status:s.status})),
-   products:sites.flatMap((s,i)=>productsBySite[i].map(p=>({id:String(p.id),name:p.name,siteId:s.id}))),
-   productsCount:productsBySite.reduce((a,x)=>a+x.length,0),availableSites:allSites.map(s=>({id:s.id,slug:s.slug,name:s.name})),dataMode:'operational',financialIntegrated:false}};
+  return {status:200,value:summarize(sites,productsBySite,'owner','all')};
  }
  if(!slug || !/^[a-z][a-z0-9-]{1,39}$/.test(slug))return {status:404};
  const site=await store.getSite(slug);
@@ -55,8 +73,7 @@ export async function erpContext(store,{isOwner=false,user,slug=null,branchIds=[
   if(!await store.hasFeature(site,'analytics'))return {status:403};
  }
  const products=await store.listProducts(site.id);
- return {status:200,value:{scope:isOwner?'owner':'tenant',scopeId:site.slug,sites:[{id:site.id,slug:site.slug,name:site.name,status:site.status}],
-  products:products.map(p=>({id:String(p.id),name:p.name,siteId:site.id})),productsCount:products.length,availableSites:[{id:site.id,slug:site.slug,name:site.name}],dataMode:'operational',financialIntegrated:false}};
+ return {status:200,value:summarize([site],[products],isOwner?'owner':'tenant',site.slug)};
 }
 
 /** For preview only: all numbers in mock mode are fictitious. */
@@ -78,11 +95,12 @@ export function erpDashboardPage({scope='demo',site=null,previewRole=null}={}){
  ${link(owner?'/owner#plans':demo?'/demo/erp':'/dashboard/'+slug,'الباقات والصلاحيات','layers')}
  ${link(owner?'/owner#security':demo?'/demo/erp':'/dashboard/'+slug,'الإعدادات والأمان','settings')}</nav>
  <div class="oc-sidebar-bottom"><div class="oc-secure-flag"><span></span>${demo?'معاينة عامة بلا بيانات حقيقية':'الوصول محمي بصلاحيات السيرفر'}</div><a href="${e(back)}" class="oc-view-site">${svg('back')}<span data-i18n="back">الرجوع للوحة الأصلية</span></a></div></aside>
- <div class="oc-main-wrap erp-main"><header class="oc-top"><div class="oc-top-leading"><button type="button" class="erp-menu-toggle" id="erp-menu" aria-label="فتح القائمة" aria-expanded="false" aria-controls="erp-side">☰</button><div class="oc-breadcrumb"><span data-i18n="platform">المنصة</span><span>/</span>${e(scopeName)}<span>/</span><b data-i18n="analytics">التحليلات المتقدمة</b></div></div><div class="oc-top-actions"><span class="erp-indicator">${demo?'DEMO PREVIEW':'PRIVATE WORKSPACE'}</span><button class="erp-icon-button" type="button" id="erp-notifications" aria-label="التنبيهات">${svg('bell')}</button><span class="oc-owner-avatar">${owner?'م':demo?'ع':e(scopeName[0])}</span></div></header>
- <main class="oc-content erp-content" id="main" data-erp-root data-scope="${e(scope)}" data-slug="${e(slug)}"><section class="erp-page-heading"><div><span class="oc-eyebrow">BUSINESS INTELLIGENCE / ${owner?'SUPER ADMIN':'WORKSPACE'}</span><h1><span data-i18n="dashboardTitle">لوحة المبيعات والتحليلات</span><em>.</em></h1><p data-i18n="dashboardSubtitle">كل التفاصيل التشغيلية في مكان واحد — بنفس هوية جامع Premium.</p></div><div class="erp-heading-actions"><span class="erp-scope-chip">${svg('lock')} ${e(active)}</span><button class="erp-primary-btn" id="erp-edit" type="button">${svg('grid')}<span data-i18n="widgets">الودجت</span></button></div></section>
+ <div class="oc-main-wrap erp-main"><header class="oc-top"><div class="oc-top-leading"><button type="button" class="erp-menu-toggle" id="erp-menu" aria-label="فتح القائمة">☰</button><div class="oc-breadcrumb"><span data-i18n="platform">المنصة</span><span>/</span>${e(scopeName)}<span>/</span><b data-i18n="analytics">التحليلات المتقدمة</b></div></div><div class="oc-top-actions"><span class="erp-indicator">${demo?'DEMO PREVIEW':'PRIVATE WORKSPACE'}</span><button class="erp-icon-button" type="button" id="erp-notifications" aria-label="التنبيهات">${svg('bell')}</button><span class="oc-owner-avatar">${owner?'م':demo?'ع':e(scopeName[0])}</span></div></header>
+ <main class="oc-content erp-content" id="main" data-erp-root data-scope="${e(scope)}" data-slug="${e(slug)}"><section class="erp-page-heading"><div><span class="oc-eyebrow">BUSINESS INTELLIGENCE / ${owner?'SUPER ADMIN':'WORKSPACE'}</span><h1><span data-i18n="dashboardTitle">لوحة المبيعات والتحليلات</span><em>.</em></h1><p data-i18n="dashboardSubtitle">كل التفاصيل التشغيلية في مكان واحد — بنفس هوية جامع Premium.</p></div><div class="erp-heading-actions">${demo&&previewRole?'<a class="erp-ghost-btn" href="/owner/">الإدارة الرئيسية</a><a class="erp-ghost-btn" href="/brand/">البراند</a>':''}<span class="erp-scope-chip">${svg('lock')} ${e(active)}</span><button class="erp-primary-btn" id="erp-edit" type="button">${svg('grid')}<span data-i18n="widgets">الودجت</span></button></div></section>
  <div class="erp-demo-notice" role="status" id="erp-data-banner">${demo?'جميع البيانات المالية والمنتجات هنا تجريبية — لا تعكس معاملات حقيقية.':'الإحصائيات الحقيقية للمنتجات فقط؛ المبيعات والفواتير غير متصلة بعد. يمكن تشغيل العرض التجريبي من الإعدادات.'}</div>
- <div class="erp-toolbar" role="group" aria-label="فلاتر التحليلات"><label><span data-i18n="from">من</span><input type="date" id="erp-from"></label><label><span data-i18n="to">إلى</span><input type="date" id="erp-to"></label><label class="erp-select-wrap"><span data-i18n="branches">المواقع / الفروع</span><select id="erp-branches" multiple size="1" aria-label="اختيار المواقع والفروع"><option value="all">جميع المواقع</option></select></label><label class="erp-product-filter"><span data-i18n="productSearch">البحث عن منتج</span><input type="search" id="erp-products" list="erp-product-options" autocomplete="off" placeholder="ابحث عن منتج"><datalist id="erp-product-options"></datalist></label><button type="button" class="erp-ghost-btn" id="erp-language">English / العربية</button><button type="button" class="erp-ghost-btn" id="erp-data-toggle">${demo?'إظهار الفراغ':'عرض بيانات تجريبية'}</button></div>
+ <div class="erp-toolbar" role="group" aria-label="فلاتر التحليلات"><label><span data-i18n="from">من</span><input type="date" id="erp-from"></label><label><span data-i18n="to">إلى</span><input type="date" id="erp-to"></label><label class="erp-select-wrap"><span data-i18n="branches">المواقع / الفروع</span><select id="erp-branches" multiple size="3" aria-label="اختيار المواقع والفروع"><option value="all">جميع المواقع</option></select></label><label class="erp-product-filter"><span data-i18n="productSearch">البحث عن منتج</span><input type="search" id="erp-products" list="erp-product-options" autocomplete="off" placeholder="ابحث عن منتج"><datalist id="erp-product-options"></datalist></label><button type="button" class="erp-ghost-btn" id="erp-language">English / العربية</button><button type="button" class="erp-ghost-btn" id="erp-data-toggle">${demo?'إظهار الفراغ':'عرض بيانات تجريبية'}</button></div>
  <section class="erp-edit-panel" id="erp-editor" hidden><div><b data-i18n="editorTitle">تخصيص اللوحة</b><p data-i18n="editorHint">اسحب الكروت أو استخدم الأسهم، وعدّل العرض وأخفِ ما لا تحتاجه.</p></div><div class="erp-editor-list" id="erp-editor-list"></div><button class="erp-ghost-btn" id="erp-reset" type="button" data-i18n="reset">استعادة الترتيب الأصلي</button></section>
  <div class="erp-live-summary"><span class="erp-live-pip"></span><b id="erp-range-label">هذا الشهر</b><span id="erp-scope-label">${e(scopeName)}</span><span class="erp-mock-stamp" id="erp-mock-stamp">${demo?'بيانات توضيحية':'بيانات تشغيلية'}</span></div>
+ <section class="erp-operational" id="erp-operational" aria-label="مؤشرات المخزون التشغيلي"><div class="erp-operational-head"><div><b data-i18n="inventoryTitle">حالة المخزون الفعلية</b><small data-i18n="inventoryNote">المخزون لحظة الطلب؛ فلتر التاريخ يخص المبيعات المستقبلية فقط.</small></div>${!demo?'<a class="erp-ghost-btn" id="erp-export" href="#" download="jame3-inventory.csv">تصدير مخزون CSV</a>':''}</div><div class="erp-operational-grid" id="erp-operational-grid" aria-live="polite"></div></section>
  <div class="erp-grid" id="erp-grid">${widget}</div><footer class="erp-footer">JAME3 OPERATING SYSTEM — DEMONSTRATION / © 2026 <span data-i18n="footer">الفوترة والشحن والطلبات الفعلية لم تُربط بعد.</span></footer></main></div></div><div class="erp-overlay" id="erp-overlay" hidden></div></body></html>`;
 }

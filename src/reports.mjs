@@ -19,3 +19,11 @@ export function sitesCsv(sites,stats={}) {
   ]);
   return '\uFEFF'+[headers,...rows].map(row=>row.map(safeCsvCell).join(',')).join('\r\n')+'\r\n';
 }
+
+/** Export only already-authorized, filtered catalog entries; amounts are stock value estimates, never sales. */
+export function inventoryCsv(context){
+  const sites=new Map(context.sites.map(site=>[site.id,site.name]));
+  const head=['Site','Product','Stock units','Availability'];
+  const lines=context.products.map(p=>[sites.get(p.siteId)||'',p.name,p.stock,p.stock===0?'Out of stock':p.stock<=5?'Low stock':'Available']);
+  return '\uFEFF'+[head,...lines].map(row=>row.map(safeCsvCell).join(',')).join('\r\n')+'\r\n';
+}

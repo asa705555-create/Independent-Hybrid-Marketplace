@@ -2,13 +2,11 @@
  * This client is presentation-only. Data scoping and permissions live in server.mjs.
  * Stored preferences never confer access to a tenant or any backend resource.
  */
-import {DEMO_SITES, DEMO_PRODUCTS, buildDemoModel} from './erp-demo-data.mjs';
 const root=document.querySelector('[data-erp-root]');
 if(!root)throw new Error('ERP dashboard root not found');
 const scope=root.dataset.scope;
 const siteSlug=root.dataset.slug;
 const demo=scope==='demo';
-const previewView=demo && new URLSearchParams(location.search).get('view')==='owner'?'owner':demo?'brand':scope;
 const ids=['products','customers','invoices','invoiceTotal','branches','comparison','totalSales','categories','topProducts','lowProducts','locations','orders','expenses','invoiceYear','methods','topUsers','addons'];
 const titles={
  products:['المنتجات','Products'],customers:['العملاء','Customers'],invoices:['الفواتير','Invoices'],invoiceTotal:['إجمالي الفواتير','Total invoices'],
@@ -19,13 +17,13 @@ const titles={
  topUsers:['المستخدم الأكثر مبيعًا','Top selling user'],addons:['المبيعات حسب الإضافات','Sales by add-ons']
 };
 const labels={
- ar:{nav:'القائمة الرئيسية',analytics:'التحليلات المتقدمة',back:'الرجوع للوحة الأصلية',platform:'المنصة',dashboardTitle:'لوحة المبيعات والتحليلات',dashboardSubtitle:'كل التفاصيل التشغيلية في مكان واحد — بنفس هوية جامع Premium.',widgets:'الودجت',from:'من',to:'إلى',branches:'المواقع / الفروع',productSearch:'البحث عن منتج',editorTitle:'تخصيص اللوحة',editorHint:'اسحب الكروت أو استخدم الأسهم، وعدّل العرض وأخفِ ما لا تحتاجه.',reset:'استعادة الترتيب الأصلي',footer:'الفوترة والشحن والطلبات الفعلية لم تُربط بعد.',none:'لا يوجد عناصر',currency:'جنيه مصري',week:'الأسبوع',sample:'بيانات توضيحية',operational:'بيانات تشغيلية',sales:'المبيعات',returns:'المرتجعات',cost:'التكلفة',profit:'الربح',pending:'غير متصل',cash:'نقدي',card:'بطاقة',wallet:'محفظة',bank:'تحويل بنكي',invoicesLabel:'فواتير',paymentsLabel:'دفعات',all:'جميع المواقع',editDone:'حفظ الترتيب',withVariants:'مع المتغيرات',withoutVariants:'بدون المتغيرات',demoOn:'إخفاء البيانات التجريبية',demoOff:'عرض بيانات تجريبية',emptyNotice:'لا توجد بيانات تجارة حقيقية؛ ربط الطلبات والمدفوعات غير مفعّل.',sampleNotice:'الأرقام والأسماء في هذه المعاينة افتراضية بالكامل، ولا توجد مبيعات أو مدفوعات حقيقية.'},
- en:{nav:'MAIN MENU',analytics:'Advanced analytics',back:'Back to main console',platform:'Platform',dashboardTitle:'Sales and analytics',dashboardSubtitle:'All the operating details together, in the original Jame3 Premium design.',widgets:'Widgets',from:'From',to:'To',branches:'Sites / branches',productSearch:'Find a product',editorTitle:'Customize dashboard',editorHint:'Drag cards or use arrows to reorder, resize or hide widgets.',reset:'Reset original layout',footer:'Real billing, shipping and sales are not integrated.',none:'No data yet',currency:'Egyptian pound',week:'Week',sample:'Sample data',operational:'Operational data',sales:'Sales',returns:'Returns',cost:'Cost',profit:'Profit',pending:'Not connected',cash:'Cash',card:'Card',wallet:'Wallet',bank:'Bank transfer',invoicesLabel:'Invoices',paymentsLabel:'Payments',all:'All sites',editDone:'Save layout',withVariants:'With variants',withoutVariants:'Without variants',demoOn:'Disable sample data',demoOff:'Show sample data',emptyNotice:'No real commerce data is connected; payments and orders are disabled.',sampleNotice:'Every amount, sale and person shown here is fictional. No real transactions are processed.'}
+ ar:{nav:'القائمة الرئيسية',analytics:'التحليلات المتقدمة',back:'الرجوع للوحة الأصلية',platform:'المنصة',dashboardTitle:'لوحة المبيعات والتحليلات',dashboardSubtitle:'كل التفاصيل التشغيلية في مكان واحد — بنفس هوية جامع Premium.',widgets:'الودجت',from:'من',to:'إلى',branches:'المواقع / الفروع',productSearch:'البحث عن منتج',editorTitle:'تخصيص اللوحة',editorHint:'اسحب الكروت أو استخدم الأسهم، وعدّل العرض وأخفِ ما لا تحتاجه.',reset:'استعادة الترتيب الأصلي',footer:'الفوترة والشحن والطلبات الفعلية لم تُربط بعد.',none:'لا يوجد عناصر',currency:'جنيه مصري',week:'الأسبوع',sample:'بيانات توضيحية',operational:'بيانات تشغيلية',sales:'المبيعات',returns:'المرتجعات',cost:'التكلفة',profit:'الربح',pending:'غير متصل',all:'جميع المواقع',editDone:'حفظ الترتيب',withVariants:'مع المتغيرات',withoutVariants:'بدون المتغيرات',demoOn:'إخفاء البيانات التجريبية',demoOff:'عرض بيانات تجريبية',emptyNotice:'لا توجد بيانات تجارة حقيقية؛ ربط الطلبات والمدفوعات غير مفعّل.',sampleNotice:'الأرقام والأسماء في هذه المعاينة افتراضية بالكامل، ولا توجد مبيعات أو مدفوعات حقيقية.',inventoryTitle:'مؤشرات المخزون',inventoryNote:'لحظة الاطلاع؛ التاريخ لا يغيّر أرصدة المخزون.',stockUnits:'وحدات المخزون',outOfStock:'منتجات نافدة',lowStock:'منخفضة المخزون',inventoryValue:'قيمة المخزون',exportCsv:'تصدير المخزون',exportDemo:'التصدير متاح فقط بعد تسجيل الدخول',inventoryPiasters:'قيمة المخزون تقديرية، وليست إيرادات.',loadError:'تعذر تحديث البيانات، تحقّق من صلاحيات الوصول أو الاتصال.'},
+ en:{nav:'MAIN MENU',analytics:'Advanced analytics',back:'Back to main console',platform:'Platform',dashboardTitle:'Sales and analytics',dashboardSubtitle:'All the operating details together, in the original Jame3 Premium design.',widgets:'Widgets',from:'From',to:'To',branches:'Sites / branches',productSearch:'Find a product',editorTitle:'Customize dashboard',editorHint:'Drag cards or use arrows to reorder, resize or hide widgets.',reset:'Reset original layout',footer:'Real billing, shipping and sales are not integrated.',none:'No data yet',currency:'Egyptian pound',week:'Week',sample:'Sample data',operational:'Operational data',sales:'Sales',returns:'Returns',cost:'Cost',profit:'Profit',pending:'Not connected',all:'All sites',editDone:'Save layout',withVariants:'With variants',withoutVariants:'Without variants',demoOn:'Disable sample data',demoOff:'Show sample data',emptyNotice:'No real commerce data is connected; payments and orders are disabled.',sampleNotice:'Every amount, sale and person shown here is fictional. No real transactions are processed.',inventoryTitle:'Stock overview',inventoryNote:'Point-in-time catalog totals; date range does not filter stock.',stockUnits:'Stock units',outOfStock:'Out of stock',lowStock:'Low stock',inventoryValue:'Stock value',exportCsv:'Export inventory',exportDemo:'Export requires authenticated access',inventoryPiasters:'Inventory value is an estimate, not revenue.',loadError:'Could not refresh data. Check access permissions or connection.'}
 };
 const $=id=>document.getElementById(id);
 const cards=[...document.querySelectorAll('[data-widget]')];
 const grid=$('erp-grid');
-const storageNamespace=`${scope}:${demo?previewView:scope==='owner'?'owner':siteSlug}`;
+const storageNamespace=`${scope}:${demo?'demo':scope==='owner'?'owner':siteSlug}`;
 const layoutKey=`dashboard_widget_layout_v1:${storageNamespace}`;
 const dateKey=`dashboard_date_range:${storageNamespace}`;
 const localeKey=`dashboard_locale:${storageNamespace}`;
@@ -33,7 +31,7 @@ const localeKey=`dashboard_locale:${storageNamespace}`;
  * This NEVER changes backend authorization; it changes labels only. */
 function setupDemoPreviewRoles(){
  if(!demo)return;
- const view=previewView;
+ const view=new URLSearchParams(location.search).get('view')==='owner'?'owner':'brand';
  const name=view==='owner'?'الإدارة الرئيسية':'لوحة البراند التجريبي';
  const workspace=document.querySelector('.oc-workspace b');
  if(workspace)workspace.textContent=name;
@@ -42,8 +40,9 @@ function setupDemoPreviewRoles(){
  const actions=document.querySelector('.erp-heading-actions');
  if(!actions)return;
  const container=document.createElement('div');container.className='erp-preview-roles';
- const ownerLink=document.createElement('a');ownerLink.href='/demo/erp?view=owner';ownerLink.textContent='معاينة الإدارة';
- const brandLink=document.createElement('a');brandLink.href='/demo/erp?view=brand';brandLink.textContent='معاينة البراند';
+ const previewBase=location.pathname.startsWith('/demo/erp')?'/demo/erp':'/';
+ const ownerLink=document.createElement('a');ownerLink.href=previewBase+'?view=owner';ownerLink.textContent='معاينة الإدارة';
+ const brandLink=document.createElement('a');brandLink.href=previewBase+'?view=brand';brandLink.textContent='معاينة البراند';
  for(const [a,v] of [[ownerLink,'owner'],[brandLink,'brand']]){
   a.className='erp-ghost-btn'+(v===view?' erp-view-active':'');
   if(v===view)a.setAttribute('aria-current','page');
@@ -56,13 +55,13 @@ function saveStorage(key,value){try{localStorage.setItem(key,JSON.stringify(valu
 function originalLayout(){return ids.map(id=>({id,visible:true,span:Number(document.querySelector(`[data-widget="${id}"]`)?.dataset.span||6)}));}
 function restoreLayout(){const raw=getStorage(layoutKey);if(!raw||!Array.isArray(raw.widgets))return originalLayout();const byId=new Map(raw.widgets.filter(w=>ids.includes(w?.id)).map(w=>[w.id,w]));return [...ids].map(id=>{const w=byId.get(id)||{};return{id,visible:w.visible!==false,span:[3,6,12].includes(Number(w.span))?Number(w.span):originalLayout().find(x=>x.id===id).span};}).sort((a,b)=>{const index=raw.widgets.map(v=>v.id);return (index.indexOf(a.id)===-1?999:index.indexOf(a.id))-(index.indexOf(b.id)===-1?999:index.indexOf(b.id))});}
 function thisMonth(){const d=new Date();const y=d.getFullYear(),m=d.getMonth();const iso=x=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;return [iso(new Date(y,m,1)),iso(new Date(y,m+1,0))]}
-function validISO(x){return /^\d{4}-\d{2}-\d{2}$/.test(x||'')&&!Number.isNaN(new Date(x).getTime())}
+function validISO(x){return /^\d{4}-\d{2}-\d{2}$/.test(x||'')&&!Number.isNaN(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x}
 const storedDates=getStorage(dateKey)?.dateRange;
 const defaultDates=Array.isArray(storedDates)&&storedDates.length===2&&storedDates.every(validISO)&&storedDates[0]<=storedDates[1]?storedDates:thisMonth();
 const savedLocale=getStorage(localeKey);
-const state={language:['ar','en'].includes(savedLocale)?savedLocale:'ar',from:defaultDates[0],to:defaultDates[1],selectedSites:[],search:'',mock:demo,withVariants:true,edit:false,layout:restoreLayout(),scopeData:null,loading:true};
+const state={language:['ar','en'].includes(savedLocale)?savedLocale:'ar',from:defaultDates[0],to:defaultDates[1],selectedSites:[],search:'',mock:demo,edit:false,layout:restoreLayout(),scopeData:null,allSites:null,loading:true,error:false};
 const palette=['#285e47','#74ac84','#d5bc8c','#a0c6ab','#3b8770'];
-const money=n=>Number(n||0).toLocaleString(state.language==='ar'?'ar-EG':'en-US',{maximumFractionDigits:0});
+const money=n=>{try{const value=(typeof n==='bigint'||typeof n==='string'&&/^\d+$/.test(n))?BigInt(n):Number(n||0);return new Intl.NumberFormat(state.language==='ar'?'ar-EG':'en-US',{maximumFractionDigits:0}).format(value)}catch{return '—'}};
 const escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tr=k=>labels[state.language][k]||k;
 const textOrDash=x=>x===null?'—':money(x);
@@ -71,31 +70,62 @@ const colors=['#2f7655','#8ec19b','#d3b783','#5b9a80','#b9d6c0'];
 
 function buildModel(){
  const operational=state.scopeData;
- if(!state.mock){
-  const relevant=(operational?.products||[]).filter(p=>!state.search.trim()||p.name.toLocaleLowerCase('ar').includes(state.search.trim().toLocaleLowerCase('ar')));
-  return {products:relevant.length,customers:null,invoices:null,invoiceTotal:null,empty:true,series:[],sites:operational?.sites||[],synthetic:false};
- }
- return buildDemoModel({view:previewView==='owner'?'owner':'brand',from:state.from,to:state.to,
-   branchIds:state.selectedSites,search:state.search,withVariants:state.withVariants});
+ const rawCount=Number(operational?.productsCount||0);
+ const siteCount=state.selectedSites.length || (operational?.sites?.length||3);
+ const span=Math.max(1,Math.round((Date.parse(state.to)-Date.parse(state.from))/86400000)+1);
+ const scale=Math.min(3.5,Math.max(.15,span/30));
+ let filterRatio=1;
+ if(state.search.trim())filterRatio=.35;
+ if(state.selectedSites.length)filterRatio=Math.min(1,state.selectedSites.length/Math.max(1,(operational?.sites?.length||3)));
+ const factor=scale*filterRatio;
+ if(!state.mock){return{products:rawCount,customers:null,invoices:null,invoiceTotal:null,empty:true,series:[],labels:[],sites:operational?.sites||[]};}
+ const steps=span>65?Math.min(12,Math.ceil(span/30)):5;
+ const series=Array.from({length:steps},(_,i)=>{
+   const v=Math.round((21000+4800*(i%3)+6000*Math.sin(i*.9+siteCount*.4))*factor);
+   const returns=Math.round(v*(.055+i*.008));const cost=Math.round(v*(.51+i*.015));
+   return {label:span>65?(state.language==='ar'?'شهر ':'Month ')+money(i+1):tr('week')+' '+money(i+1),sales:v,returns,cost,profit:v-returns-cost,invoice:Math.round(v/750)};
+ });
+ const sum=key=>series.reduce((a,x)=>a+x[key],0);
+ const revenue=sum('sales');
+ const products=['هودي قطن بريميوم','تيشيرت أساسي','بنطلون رياضي','قميص كتان','شنطة قماش','سويت شيرت'];
+ const brandNames=operational?.sites?.map(x=>x.name)||[];
+ const branchNames=brandNames.length?brandNames:['فرع القاهرة','فرع الجيزة','فرع الإسكندرية'];
+ const selectedNames=state.selectedSites.length?branchNames.filter((_,i)=>state.selectedSites.includes(operational?.sites?.[i]?.id||`sample-${i}`)):branchNames;
+ const subCategories=['ملابس','إكسسوارات','أحذية','عناية'];
+ const matrix={branches:selectedNames.map((name,i)=>({name,value:Math.round(revenue/(selectedNames.length||1)*(1+.1*Math.sin(i)))})),categories:subCategories.map((name,i)=>({name,value:Math.round(revenue*[.4,.28,.2,.12][i])})),orders:['جديد','تجهيز','شحن','تم التسليم','ملغي'].map((name,i)=>({name,value:Math.round(42*factor*[.13,.19,.26,.38,.04][i])})),expenses:['تشغيل','تسويق','شحن','مرتجعات'].map((name,i)=>({name,value:Math.round(revenue*.2*[.35,.25,.26,.14][i])})),locations:['القاهرة','الجيزة','الإسكندرية','المنصورة','طنطا'].map((name,i)=>({name,value:Math.round(revenue*[.4,.26,.16,.1,.08][i])})),methods:['كاش','بطاقة','محفظة','تحويل'].map((name,i)=>({name,value:Math.round(revenue*[.35,.4,.19,.06][i])}))};
+ const prodData=products.map((name,i)=>({name,qty:Math.max(1,Math.round((62-i*9)*factor)),value:Math.max(150,Math.round((35-i*4)*1300*factor))}));
+ return{products:rawCount||Math.max(1,Math.round(134*factor)),customers:Math.round(329*factor),invoices:Math.round(126*factor),invoiceTotal:revenue,series,labels:series.map(x=>x.label),money:revenue,productsData:prodData,branchNames,matrix,empty:false};
 }
 function empty(){return `<div class="erp-empty"><span class="erp-empty-symbol">×</span><span>${tr('none')}</span></div>`;}
 function donut(rows){const values=(rows||[]).filter(v=>v.value>0);if(!values.length)return empty();const total=values.reduce((a,x)=>a+x.value,0);let angle=0;const parts=values.map((r,i)=>{const start=angle;angle+=r.value/total*360;return `${colors[i%colors.length]} ${start.toFixed(2)}deg ${angle.toFixed(2)}deg`});return `<div class="erp-donut-wrap"><div class="erp-donut" style="background:conic-gradient(${parts.join(',')})"><div class="erp-donut-center">${money(total)}<small>${tr('sample')}</small></div></div><div class="erp-legend-vertical">${values.map((r,i)=>`<span><span><i style="background:${colors[i%colors.length]}"></i>${escapeHTML(r.name)}</span><b>${money(r.value)}</b></span>`).join('')}</div></div>`}
 const svgText=(x,y,label,extra='')=>`<text x="${x}" y="${y}" class="erp-chart-label" ${extra}>${escapeHTML(label)}</text>`;
-function lineChart(series,year=false){if(!series.length)return empty();const width=620,height=165;const data=series;
- const max=Math.max(1,...data.map(x=>x.sales),...data.map(x=>year?x.payments:x.returns))*1.18;const coords=(key)=>data.map((r,i)=>[data.length===1?310:35+i*((width-60)/(data.length-1)),height-25-r[key]/max*(height-45)]);const points=(key)=>coords(key).map(a=>a.map(n=>n.toFixed(1)).join(',')).join(' ');
+function lineChart(series,year=false){if(!series.length)return empty();const width=620,height=165;const data=year?Array.from({length:12},(_,i)=>({label:String(i+1),sales:Math.round(series[i%series.length].sales*(.48+i*.052)),returns:Math.round(series[i%series.length].returns*(.48+i*.052))})):series;
+ const max=Math.max(1,...data.map(x=>x.sales))*1.18;const coords=(key)=>data.map((r,i)=>[35+i*((width-60)/(data.length-1)),height-25-r[key]/max*(height-45)]);const points=(key)=>coords(key).map(a=>a.map(n=>n.toFixed(1)).join(',')).join(' ');
  const gridlines=[0,.25,.5,.75,1].map(f=>`<line class="erp-gridline" x1="35" x2="600" y1="${(height-25-f*(height-45)).toFixed(1)}" y2="${(height-25-f*(height-45)).toFixed(1)}"/>`).join('');
  const area=`35,${height-25} ${points('sales')} 600,${height-25}`;
- return `<svg viewBox="0 0 ${width} ${height}" class="erp-chart" role="img" aria-label="${year?'Yearly':'Weekly'} area chart" preserveAspectRatio="none"><defs><linearGradient id="grad-${year?'yr':'sales'}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8cc5a0" stop-opacity=".34"/><stop offset="1" stop-color="#8cc5a0" stop-opacity="0"/></linearGradient></defs>${gridlines}<polygon points="${area}" fill="url(#grad-${year?'yr':'sales'})"/><polyline fill="none" stroke="#2a7654" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${points('sales')}"/><polyline fill="none" stroke="#d0ae78" stroke-width="2" stroke-dasharray="5 6" points="${points(year?'payments':'returns')}"/>${data.filter((_,i)=>i%Math.ceil(data.length/6)===0).map((d,i)=>svgText(35+(data.indexOf(d)*(width-60)/(data.length-1)),height-7,d.label,`text-anchor="middle"`)).join('')}</svg><div class="erp-legend"><span><i style="background:#2a7654"></i>${year?tr('invoicesLabel'):tr('sales')}</span><span><i style="background:#d0ae78"></i>${year?tr('paymentsLabel'):tr('returns')}</span></div>`;
+ return `<svg viewBox="0 0 ${width} ${height}" class="erp-chart" role="img" aria-label="${year?'Yearly':'Weekly'} area chart" preserveAspectRatio="none"><defs><linearGradient id="grad-${year?'yr':'sales'}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8cc5a0" stop-opacity=".34"/><stop offset="1" stop-color="#8cc5a0" stop-opacity="0"/></linearGradient></defs>${gridlines}<polygon points="${area}" fill="url(#grad-${year?'yr':'sales'})"/><polyline fill="none" stroke="#2a7654" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${points('sales')}"/><polyline fill="none" stroke="#d0ae78" stroke-width="2" stroke-dasharray="5 6" points="${points('returns')}"/>${data.filter((_,i)=>i%Math.ceil(data.length/6)===0).map((d,i)=>svgText(35+(data.indexOf(d)*(width-60)/(data.length-1)),height-7,d.label,`text-anchor="middle"`)).join('')}</svg><div class="erp-legend"><span><i style="background:#2a7654"></i>${year?tr('invoices'):tr('sales')}</span><span><i style="background:#d0ae78"></i>${year?'Payments':tr('returns')}</span></div>`;
 }
-function barChart(series,methods=false){if(!series.length)return empty();const W=620,H=166;const keys=methods?['cash','card','wallet','bank']:['sales','returns','cost','profit'];const cs=methods?['#3a8060','#d2b780','#8dbca0','#52799a']:['#307657','#c8b17b','#8dbca0','#5b966f'];const max=Math.max(1,...series.flatMap(s=>keys.map(k=>s[k]||0)))*1.2;let bars='';const w=520/series.length;
+function barChart(series,methods=false){if(!series.length)return empty();const W=620,H=166;const keys=methods?['sales','cost','profit']:['sales','returns','cost','profit'];const cs=methods?['#3a8060','#d2b780','#8dbca0']:['#307657','#c8b17b','#8dbca0','#5b966f'];const max=Math.max(1,...series.flatMap(s=>keys.map(k=>s[k])))*1.2;let bars='';const w=520/series.length;
  series.forEach((r,i)=>{const center=55+i*w;keys.forEach((key,j)=>{const val=r[key],bh=Math.max(1,(val/max)*120);bars+=`<rect x="${(center+j*17).toFixed(1)}" y="${(H-26-bh).toFixed(1)}" width="13" height="${bh.toFixed(1)}" rx="3" fill="${cs[j]}" ><title>${escapeHTML(r.label)} · ${escapeHTML(key)} · ${money(val)}</title></rect>`;});bars+=svgText(center+22,H-7,r.label,`text-anchor="middle"`)});
  const lines=[0,.25,.5,.75,1].map(f=>`<line x1="35" y1="${H-26-f*120}" x2="600" y2="${H-26-f*120}" class="erp-gridline"/>`).join('');return `<svg viewBox="0 0 ${W} ${H}" class="erp-chart" role="img" aria-label="Grouped sales bars">${lines}${bars}</svg><div class="erp-legend">${keys.map((k,i)=>`<span><i style="background:${cs[i]}"></i>${tr(k)}</span>`).join('')}</div>`;
 }
-function ranking(rows,low=false){if(!rows?.length)return empty();return `<div class="erp-subheading"><span class="erp-legend">${low?'↘':'↗'} ${tr('sample')}</span><select class="erp-variant-select" aria-label="Variants"><option value="with" ${state.withVariants?'selected':''}>${tr('withVariants')}</option><option value="without" ${!state.withVariants?'selected':''}>${tr('withoutVariants')}</option></select></div>${(low?[...rows].reverse():rows).slice(0,4).map((p,i)=>`<div class="erp-rank"><span class="erp-rank-ico">${i+1}</span><div class="erp-rank-text"><b>${escapeHTML(p.name)}</b><small>${money(p.qty)} قطعة</small></div><b class="erp-rank-amount">${money(p.value)} EGP</b></div>`).join('')}`}
+/** Revenue by payment method uses actual sample method proportions, never cost/profit proxies. */
+function paymentMethods(series){if(!series?.length)return empty();const proportions=[.35,.4,.19,.06];
+ const names=state.language==='ar'?['نقدي','بطاقة','محفظة','تحويل بنكي']:['Cash','Card','Wallet','Bank transfer'];
+ const W=620,H=166,max=Math.max(1,...series.map(x=>x.sales))*1.12;let bars='';
+ series.forEach((r,i)=>{let y=H-26;const x=65+i*110;proportions.forEach((pct,j)=>{const h=r.sales*pct/max*118;y-=h;bars+=`<rect x="${x}" y="${y.toFixed(2)}" width="45" height="${h.toFixed(2)}" fill="${colors[j]}" rx="1"><title>${escapeHTML(names[j])} · ${money(Math.round(r.sales*pct))}</title></rect>`});bars+=svgText(x+23,H-7,r.label,'text-anchor="middle"');});
+ return `<svg viewBox="0 0 ${W} ${H}" class="erp-chart" role="img" aria-label="Payment channels chart">${bars}</svg><div class="erp-legend">${names.map((x,i)=>`<span><i style="background:${colors[i]}"></i>${escapeHTML(x)}</span>`).join('')}</div>`;}
+function ranking(rows,low=false){if(!rows?.length)return empty();return `<div class="erp-subheading"><span class="erp-legend">${low?'↘':'↗'} ${tr('sample')}</span><select class="erp-variant-select" aria-label="Variants"><option>${tr('withVariants')}</option><option>${tr('withoutVariants')}</option></select></div>${(low?[...rows].reverse():rows).slice(0,4).map((p,i)=>`<div class="erp-rank"><span class="erp-rank-ico">${i+1}</span><div class="erp-rank-text"><b>${escapeHTML(p.name)}</b><small>${money(p.qty)} قطعة</small></div><b class="erp-rank-amount">${money(p.value)} EGP</b></div>`).join('')}`}
 function locations(rows){if(!rows?.length)return empty();const max=Math.max(...rows.map(x=>x.value));return rows.map(x=>`<div class="erp-progress-row"><span>${escapeHTML(x.name)}</span><div class="erp-progress-track"><div class="erp-progress-bar" style="width:${Math.round(100*x.value/max)}%"></div></div><b>${money(x.value)}</b></div>`).join('');}
-function dataTable(id,model){if(model.empty)return empty();const records=id==='topUsers'?model.topUsers:model.addons;
- const th=id==='topUsers'?['الاسم','المبيعات','المرتجع','الصافي']:['الإضافة','الفواتير','القيمة','الصافي'];
- return `<div style="overflow:auto"><table class="erp-mini-table"><thead><tr>${th.map(x=>`<th>${escapeHTML(x)}</th>`).join('')}</tr></thead><tbody>${records.map(row=>`<tr><td>${escapeHTML(row.name)}</td><td class="erp-number">${money(id==='addons'?row.invoices:row.sales)}</td><td class="erp-number">${money(id==='addons'?row.sales:row.returns)}</td><td class="erp-number">${money(row.sales-row.returns)}</td></tr>`).join('')}</tbody></table></div>`;
+function dataTable(id,model){if(model.empty)return empty();
+ if(id==='topUsers'){
+  const records=['مدير القاهرة','فريق الإسكندرية','مشرف المبيعات'].map((name,i)=>[name,Math.round(model.money*[.24,.17,.10][i]),Math.round(model.money*[.02,.01,.005][i])]);
+  const th=state.language==='ar'?['الاسم','المبيعات','المرتجعات','الصافي']:['Name','Sales','Returns','Net'];
+  return `<div class="erp-table-scroll"><table class="erp-mini-table"><thead><tr>${th.map(x=>`<th>${escapeHTML(x)}</th>`).join('')}</tr></thead><tbody>${records.map(row=>`<tr><td>${escapeHTML(row[0])}</td>${[row[1],row[2],row[1]-row[2]].map(n=>`<td class="erp-number">${money(n)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ }
+ const headings=state.language==='ar'?['الإضافة','عدد الفواتير','قيمة الفواتير','عدد المرتجعات','إجمالي المبيعات','قيمة المرتجعات','صافي المبيعات']:['Add-on','Invoices','Invoice value','Returns count','Gross sales','Return value','Net sales'];
+ const lines=['التغليف','التوصيل','خيارات إضافية'].map((name,i)=>{const count=Math.round(model.invoices*[.3,.2,.1][i]);const gross=Math.round(model.money*[.12,.07,.05][i]);const refunded=Math.round(gross*.04);return[name,count,gross,Math.max(0,Math.floor(count*.05)),gross,refunded,gross-refunded]});
+ return `<div class="erp-table-scroll"><table class="erp-mini-table"><thead><tr>${headings.map(x=>`<th>${escapeHTML(x)}</th>`).join('')}</tr></thead><tbody>${lines.map(row=>`<tr><td>${escapeHTML(row[0])}</td>${row.slice(1).map(n=>`<td class="erp-number">${money(n)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function renderWidget(id,m){if(ids.slice(0,4).includes(id)){const n=m[id];return `<div class="erp-big-number">${textOrDash(n)}<small>${id==='invoiceTotal'?tr('currency'):m.empty&&id!=='products'?tr('pending'):''}</small></div>`;}
  if(m.empty)return empty();
@@ -108,59 +138,61 @@ function renderWidget(id,m){if(ids.slice(0,4).includes(id)){const n=m[id];return
  if(id==='locations')return locations(m.matrix.locations);
  if(id==='orders')return donut(m.matrix.orders);
  if(id==='expenses')return donut(m.matrix.expenses);
- if(id==='invoiceYear')return lineChart(m.yearlySeries,true);
- if(id==='methods')return barChart(m.methodsSeries,true);
+ if(id==='invoiceYear')return lineChart(m.series,true);
+ if(id==='methods')return paymentMethods(m.series);
  if(['topUsers','addons'].includes(id))return dataTable(id,m);
  return empty();}
-function setBanner(){const b=$('erp-data-banner');b.textContent=state.mock?tr('sampleNotice'):tr('emptyNotice');$('erp-mock-stamp').textContent=state.mock?tr('sample'):tr('operational');$('erp-data-toggle').textContent=state.mock?tr('demoOn'):tr('demoOff');}
+function setBanner(){const b=$('erp-data-banner');b.textContent=state.error?tr('loadError'):state.mock?tr('sampleNotice'):tr('emptyNotice');$('erp-mock-stamp').textContent=state.mock?tr('sample'):tr('operational');$('erp-data-toggle').textContent=state.mock?tr('demoOn'):tr('demoOff');}
 function applyLanguage(){const en=state.language==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(labels[state.language][k])el.textContent=tr(k)});document.querySelectorAll('[data-widget-heading]').forEach(el=>el.textContent=titles[el.dataset.widgetHeading]?.[en?1:0]||el.textContent);saveStorage(localeKey,state.language);setBanner();}
 function applyLayout(){for(const item of state.layout){const el=cardMap.get(item.id);if(!el)continue;el.hidden=!item.visible;el.style.setProperty('--widget-span',item.span);grid.append(el);}saveStorage(layoutKey,{main_dashboard:{},widgets:state.layout});}
 function renderEditor(){const node=$('erp-editor-list');node.textContent='';for(const item of state.layout){const label=document.createElement('label');const check=document.createElement('input');check.type='checkbox';check.checked=item.visible;check.setAttribute('aria-label',titles[item.id]?.[state.language==='en'?1:0]||item.id);check.addEventListener('change',()=>{item.visible=check.checked;applyLayout()});const title=document.createElement('span');title.textContent=titles[item.id]?.[state.language==='en'?1:0]||item.id;label.append(check,title);node.append(label)}}
-function renderAll(){applyLanguage();const model=buildModel();cards.forEach(el=>{const id=el.dataset.widget;el.querySelector('[data-widget-content]').innerHTML=renderWidget(id,model)});$('erp-range-label').textContent=`${state.from} ← ${state.to}`;$('erp-scope-label').textContent=(state.mock?buildDemoModel({view:previewView==='owner'?'owner':'brand',from:state.from,to:state.to,branchIds:state.selectedSites,search:state.search}).sites:state.scopeData?.sites||[]).map(s=>s.name).join('، ')||tr('all');setBanner();}
-function selectedBranchIds(){const select=$('erp-branches');const selected=[...select.selectedOptions].map(x=>x.value).filter(x=>x!=='all');return selected;}
-function refreshBranchSelect(){
- const select=$('erp-branches');const sites=state.scopeData?.availableSites||state.scopeData?.sites||[];
- const previous=[...state.selectedSites];select.replaceChildren();select.add(new Option(tr('all'),'all'));
- sites.forEach(s=>select.add(new Option(s.name,s.id)));
- state.selectedSites=previous.filter(id=>sites.some(s=>s.id===id));
- for(const option of select.options)option.selected=option.value==='all'?!state.selectedSites.length:state.selectedSites.includes(option.value);
- const products=$('erp-product-options');products.replaceChildren();
- const names=demo?DEMO_PRODUCTS.map(p=>p.name):state.scopeData?.products?.map(p=>p.name)||[];
- [...new Set(names)].forEach(n=>products.append(new Option(n)));
+function renderOperational(){
+ const data=demo?{productsCount:42,stockUnits:1278,lowStock:6,outOfStock:3,inventoryPiasters:'73540000'}:state.scopeData;
+ const row=$('erp-operational-grid');if(!row)return;
+ if(!data){row.replaceChildren();row.textContent=tr('loadError');return;}
+ const stats=[['products',data.productsCount],['stockUnits',data.stockUnits],['lowStock',data.lowStock],['outOfStock',data.outOfStock],['inventoryValue', (BigInt(data.inventoryPiasters||0)/100n).toString()]];
+ row.replaceChildren();for(const [key,value] of stats){const item=document.createElement('div');item.className='erp-operational-card';
+   const title=document.createElement('small');title.textContent=tr(key);const figure=document.createElement('b');figure.textContent=money(value);
+   item.append(title,figure);row.append(item)}
+ const link=$('erp-export');if(link){const params=new URLSearchParams({scope:scope==='owner'?'owner':'tenant',from:state.from,to:state.to});
+   if(scope!=='owner')params.set('site',siteSlug);
+   if(state.search.trim())params.set('q',state.search.trim());
+   state.selectedSites.forEach(id=>params.append('branch_id[]',id));
+   link.href='/api/erp/inventory.csv?'+params.toString();link.textContent=tr('exportCsv');}
 }
-async function loadRealContext(){if(demo){const sites=previewView==='owner'?DEMO_SITES:DEMO_SITES.slice(0,1);state.scopeData={scope:'demo',scopeId:previewView,sites,productsCount:sites.length*DEMO_PRODUCTS.length,products:DEMO_PRODUCTS};return;}
+function renderAll(){applyLanguage();renderOperational();const model=buildModel();cards.forEach(el=>{const id=el.dataset.widget;el.querySelector('[data-widget-content]').innerHTML=renderWidget(id,model)});$('erp-range-label').textContent=`${state.from} ← ${state.to}`;$('erp-scope-label').textContent=state.scopeData?.sites?.map(s=>s.name).join('، ')||'معاينة جميع المواقع';setBanner();}
+function selectedBranchIds(){const selected=[...$('erp-branches').selectedOptions].map(x=>x.value);return selected.filter(id=>id!=='all');}
+function refreshBranchSelect(){const select=$('erp-branches');const sites=state.allSites||state.scopeData?.sites||[{id:'sample-0',name:'فرع القاهرة'},{id:'sample-1',name:'فرع الجيزة'},{id:'sample-2',name:'فرع الإسكندرية'}];select.replaceChildren();const allOption=new Option(tr('all'),'all');allOption.selected=state.selectedSites.length===0;select.add(allOption);sites.forEach(s=>{const o=new Option(s.name,s.id);o.selected=state.selectedSites.includes(s.id);select.add(o)});const products=$('erp-product-options');products.replaceChildren();const names=state.scopeData?.products?.map(p=>p.name)||['هودي قطن بريميوم','تيشيرت أساسي','بنطلون رياضي','قميص كتان'];names.forEach(n=>products.append(new Option(n)))}
+let latestRequest=0;
+async function loadRealContext(){const request=++latestRequest;if(demo){state.scopeData={scope:'demo',scopeId:'demo',sites:[{id:'sample-0',name:'فرع القاهرة'},{id:'sample-1',name:'فرع الجيزة'},{id:'sample-2',name:'فرع الإسكندرية'}],productsCount:0,products:[]};state.allSites=state.scopeData.sites;state.error=false;return;}
  const params=new URLSearchParams({scope:scope==='owner'?'owner':'tenant'});
  if(scope!=='owner')params.set('site',siteSlug);
- params.set('from',state.from);params.set('to',state.to);
+ params.set('from',state.from);params.set('to',state.to);if(state.search.trim())params.set('q',state.search.trim());
  state.selectedSites.forEach(id=>params.append('branch_id[]',id));
- const response=await fetch('/api/erp/context?'+params.toString(),{credentials:'same-origin',cache:'no-store',headers:{accept:'application/json'}});
- if(response.status===401){location.assign('/login');throw Error('Sign in required')}
+ const response=await fetch('/api/erp/context?'+params.toString(),{credentials:'same-origin',cache:'no-store',redirect:'manual',headers:{accept:'application/json'}});
+ if(response.type==='opaqueredirect'||[301,302,303,307,308].includes(response.status)){location.assign('/login');throw Error('Sign in required')}
  if(!response.ok)throw Error('Not authorized to view this analytics scope');
- state.scopeData=await response.json();}
-async function saveDates(){if($('erp-from').value&&$('erp-to').value&&$('erp-from').value<=$('erp-to').value){state.from=$('erp-from').value;state.to=$('erp-to').value;saveStorage(dateKey,{dateRange:[state.from,state.to]});if(!demo){try{await loadRealContext()}catch{state.scopeData=null}}renderAll();}}
+ const context=await response.json();if(request===latestRequest){state.scopeData=context;if(!state.allSites)state.allSites=context.sites;state.error=false;}}
+async function saveDates(){if($('erp-from').value&&$('erp-to').value&&$('erp-from').value<=$('erp-to').value){state.from=$('erp-from').value;state.to=$('erp-to').value;saveStorage(dateKey,{dateRange:[state.from,state.to]});if(!demo){try{await loadRealContext()}catch{state.scopeData=null;state.error=true;}}renderAll();}}
 function moveWidget(id,direction){const at=state.layout.findIndex(x=>x.id===id);const to=at+direction;if(at<0||to<0||to>=state.layout.length)return;const [item]=state.layout.splice(at,1);state.layout.splice(to,0,item);applyLayout();renderEditor();}
 $('erp-from').value=state.from;$('erp-to').value=state.to;
 $('erp-from').addEventListener('change',saveDates);$('erp-to').addEventListener('change',saveDates);
-$('erp-branches').addEventListener('focus',event=>{event.target.size=Math.min(4,event.target.options.length)});
-$('erp-branches').addEventListener('blur',event=>{event.target.size=1});
-$('erp-branches').addEventListener('change',async()=>{state.selectedSites=selectedBranchIds();if(!demo){try{await loadRealContext()}catch{state.scopeData=null}}refreshBranchSelect();renderAll()});
-$('erp-products').addEventListener('input',event=>{state.search=event.target.value;renderAll()});
+$('erp-branches').addEventListener('change',async()=>{state.selectedSites=selectedBranchIds();if(!state.selectedSites.length){$('erp-branches').options[0].selected=true;}else{$('erp-branches').options[0].selected=false;}if(!demo){try{await loadRealContext()}catch{state.scopeData=null;state.error=true}}renderAll()});
+let searchDebounce; $('erp-products').addEventListener('input',event=>{state.search=event.target.value;clearTimeout(searchDebounce);searchDebounce=setTimeout(async()=>{if(!demo){try{await loadRealContext()}catch{state.scopeData=null;state.error=true;}}renderAll();},180)});
 $('erp-language').addEventListener('click',()=>{state.language=state.language==='ar'?'en':'ar';renderAll();renderEditor();refreshBranchSelect()});
 $('erp-data-toggle').addEventListener('click',()=>{state.mock=!state.mock;renderAll()});
 $('erp-edit').addEventListener('click',()=>{state.edit=!state.edit;root.classList.toggle('erp-editing',state.edit);$('erp-editor').hidden=!state.edit;$('erp-edit').classList.toggle('active',state.edit);$('erp-edit').lastElementChild.textContent=state.edit?tr('editDone'):tr('widgets');cards.forEach(c=>c.draggable=state.edit);renderEditor()});
 $('erp-reset').addEventListener('click',()=>{state.layout=originalLayout();applyLayout();renderEditor();renderAll()});
-grid.addEventListener('change',event=>{if(event.target.matches('.erp-variant-select')){state.withVariants=event.target.value==='with';renderAll();}});
-grid.addEventListener('click',event=>{const up=event.target.closest('[data-move-up]');const down=event.target.closest('[data-move-down]');const size=event.target.closest('[data-span-toggle]');if(up)moveWidget(up.dataset.moveUp,-1);if(down)moveWidget(down.dataset.moveDown,1);if(size){const item=state.layout.find(x=>x.id===size.dataset.spanToggle);if(item){item.span=item.span===12?6:item.span===6?12:6;applyLayout();}}});
+grid.addEventListener('click',event=>{const up=event.target.closest('[data-move-up]');const down=event.target.closest('[data-move-down]');const size=event.target.closest('[data-span-toggle]');if(up)moveWidget(up.dataset.moveUp,-1);if(down)moveWidget(down.dataset.moveDown,1);if(size){const item=state.layout.find(x=>x.id===size.dataset.spanToggle);if(item){item.span=item.span===3?6:item.span===6?12:item.id==='products'||item.id==='customers'||item.id==='invoices'||item.id==='invoiceTotal'?3:6;applyLayout();}}});
 let dragged=null;
 grid.addEventListener('dragstart',event=>{const c=event.target.closest('[data-widget]');if(!state.edit||!c){event.preventDefault();return;}dragged=c.dataset.widget;c.classList.add('dragging');event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',dragged)});
 grid.addEventListener('dragover',event=>{const c=event.target.closest('[data-widget]');if(c&&state.edit){event.preventDefault();event.dataTransfer.dropEffect='move';c.classList.add('drop-target')}});
 grid.addEventListener('dragleave',event=>{event.target.closest('[data-widget]')?.classList.remove('drop-target')});
 grid.addEventListener('drop',event=>{const c=event.target.closest('[data-widget]');if(!state.edit||!c||!dragged)return;event.preventDefault();const from=state.layout.findIndex(w=>w.id===dragged);const to=state.layout.findIndex(w=>w.id===c.dataset.widget);if(from>=0&&to>=0){const [m]=state.layout.splice(from,1);state.layout.splice(to,0,m);applyLayout();renderEditor();}dragged=null;cards.forEach(n=>n.classList.remove('drop-target','dragging'));});
 grid.addEventListener('dragend',()=>{dragged=null;cards.forEach(n=>n.classList.remove('drop-target','dragging'))});
-function setMobileMenu(open){$('erp-side').classList.toggle('open',open);$('erp-overlay').hidden=!open;$('erp-menu').setAttribute('aria-expanded',String(open));}
-$('erp-menu').addEventListener('click',()=>setMobileMenu(true));
-$('erp-overlay').addEventListener('click',()=>setMobileMenu(false));
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('erp-side').classList.contains('open'))setMobileMenu(false)});
+grid.addEventListener('keydown',event=>{const handle=event.target.closest('.erp-widget-handle');if(!state.edit||!handle)return;if(event.key==='ArrowUp'||event.key==='ArrowRight'||event.key==='ArrowDown'||event.key==='ArrowLeft'){event.preventDefault();const card=handle.closest('[data-widget]');moveWidget(card.dataset.widget,['ArrowUp','ArrowRight'].includes(event.key)?-1:1);handle.focus()}});
+$('erp-menu').addEventListener('click',()=>{$('erp-side').classList.add('open');$('erp-overlay').hidden=false});
+$('erp-overlay').addEventListener('click',()=>{$('erp-side').classList.remove('open');$('erp-overlay').hidden=true});
 $('erp-notifications').addEventListener('click',()=>{const b=$('erp-data-banner');b.textContent=state.language==='ar'?'لا توجد تنبيهات جديدة.':'No new notifications.'});
 setupDemoPreviewRoles();
-(async()=>{try{applyLayout();await loadRealContext();refreshBranchSelect();renderAll();}catch(err){cards.forEach(c=>c.querySelector('[data-widget-content]').innerHTML=empty());$('erp-data-banner').textContent='تعذر تحميل البيانات أو ليس لديك صلاحية للوحة. يرجى تسجيل الدخول.';console.warn('ERP data unavailable:',err.message);}})();
+(async()=>{try{applyLayout();await loadRealContext();refreshBranchSelect();renderAll();}catch(err){state.scopeData=null;state.error=true;renderAll();console.warn('ERP data unavailable:',err.message);}})();
