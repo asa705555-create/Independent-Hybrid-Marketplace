@@ -20,6 +20,7 @@ const staticPaths = new Map([
   ['/assets/owner-console.mjs',['owner-console.mjs','text/javascript; charset=utf-8']],
   ['/assets/erp-dashboard.css',['erp-dashboard.css','text/css; charset=utf-8']],
   ['/assets/erp-dashboard.mjs',['erp-dashboard.mjs','text/javascript; charset=utf-8']],
+  ['/assets/erp-demo-data.mjs',['erp-demo-data.mjs','text/javascript; charset=utf-8']],
   ...['index.html','styles.css','app.mjs','core.mjs','catalog.mjs'].map(name=>['/marketplace/'+name,[name,name.endsWith('.css')?'text/css; charset=utf-8':name.endsWith('.mjs')?'text/javascript; charset=utf-8':'text/html; charset=utf-8']])
 ]);
 
@@ -45,7 +46,7 @@ function cleanPath(url){try{return new URL(url,'http://localhost').pathname;}cat
 function numberField(x,max) {if(typeof x!=='string'||!/^\d{1,12}$/.test(x))return null;const n=Number(x);return Number.isSafeInteger(n)&&n<=max?n:null;}
 function normalizeOrigin(raw){try{const url=new URL(raw);return url.origin;}catch{return null;}}
 
-export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, ownerTotpSecret=null, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
+export function createApp({store, publicOrigin='http://localhost:3000', secureCookies=false, ownerTotpSecret=null, publicPreviewHome=false, now=()=>Date.now(), loginLimiter=makeLimiter(now)}={}) {
   if(!store)throw Error('Explicit isolated store required');
   const allowedOrigin=normalizeOrigin(publicOrigin);
   if(!allowedOrigin)throw Error('PUBLIC_ORIGIN must be set correctly');
@@ -90,8 +91,10 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
       catch { return response(res,503,'UNAVAILABLE',{'Content-Type':'text/plain; charset=utf-8'}); }
     }
     // Public demo uses fake fixture data only. NO privileged data or auth bypass.
-    if(method==='GET' && pathname==='/demo/erp')
-      return response(res,200,erpDashboardPage({scope:'demo'}));
+    if(method==='GET' && pathname==='/demo/erp') {
+      const view=new URL(req.url,allowedOrigin).searchParams.get('view')==='owner'?'owner':'brand';
+      return response(res,200,erpDashboardPage({scope:'demo',previewRole:view}));
+    }
     if(method==='GET' && pathname==='/owner/erp') {
       if(!ownerOnly())return;
       return response(res,200,erpDashboardPage({scope:'owner'}));
@@ -118,7 +121,13 @@ export function createApp({store, publicOrigin='http://localhost:3000', secureCo
       if(target.status!==200)return error(target.status,'لا يمكن عرض البيانات','هذا الموقع غير متاح لحسابك.');
       return response(res,200,JSON.stringify(target.value),{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
     }
-    if(method==='GET' && pathname==='/')return response(res,200,hub(await store.listSites(),currentUser));
+    if(method==='GET' && pathname==='/'){
+      // Only the explicitly opted-in PUBLIC design-preview service uses this homepage.
+      // Private owner and tenant routes still enforce their own server-side roles.
+      if(publicPreviewHome){const view=new URL(req.url,allowedOrigin).searchParams.get('view')==='owner'?'owner':'brand';
+        return response(res,200,erpDashboardPage({scope:'demo',previewRole:view}));}
+      return response(res,200,hub(await store.listSites(),currentUser));
+    }
     if(method==='GET' && pathname==='/login')return session?redirect(res,isOwner?'/owner':'/workspaces'):response(res,200,signin({mfaEnabled:Boolean(totpKey)}));
     if(method==='GET' && pathname==='/owner') {
       if(!ownerOnly())return;
@@ -277,7 +286,7 @@ export async function startFromEnvironment(env=process.env) {
   const ownerId=await store.bootstrapOwner(email,password);
   if(usingPg)await store.seedForPreview(ownerId,env.DEMO_SEED==='1');
   else await store.seedForPreview(ownerId);
-  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production',ownerTotpSecret:env.OWNER_TOTP_SECRET||null});
+  const createAppHandler=createApp({store,publicOrigin,secureCookies:env.NODE_ENV==='production',ownerTotpSecret:env.OWNER_TOTP_SECRET||null,publicPreviewHome:env.ERP_PUBLIC_PREVIEW==='1'});
   const server=http.createServer((req,res)=>{
     Promise.resolve(createAppHandler(req,res)).catch(err=>{
       console.error('Unhandled request error:',err?.message||'unknown');

@@ -10,3 +10,9 @@
 
 .erp-preview-roles{display:flex;flex-wrap:wrap;gap:6px}.erp-view-active{background:#deefe1!important;border-color:#88b899!important;color:#2d694e!important}
 @media(max-width:610px){.erp-preview-roles{width:100%}.erp-preview-roles a{flex:1;text-align:center}}
+/* When mobile navigation is closed it must be absent from pointer/focus flow.
+   The original green/gold Premium styles remain unchanged. */
+@media(max-width:860px){
+  .erp-sidebar:not(.open){visibility:hidden;pointer-events:none}
+  .erp-sidebar.open{visibility:visible;pointer-events:auto}
+}
